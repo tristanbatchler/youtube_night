@@ -1,0 +1,53 @@
+// tasks.json:
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build sqlc",
+            "type": "shell",
+            "command": "${env:HOME}/go/bin/sqlc generate -f ${workspaceFolder}/srv/internal/db/config/sqlc.yml"
+        },
+        {
+            "label": "Air watch",
+            "type": "shell",
+            "command": "${env:HOME}/go/bin/air -c ${workspaceFolder}/.air.toml"
+        },
+        {
+            "label": "Tailwind watch",
+            "type": "shell",
+            "command": ". ${env:HOME}/.nvm/nvm.sh && npx @tailwindcss/cli -i ${workspaceFolder}/srv/static/css/custom.css -o ${workspaceFolder}/srv/static/css/style.css --watch"
+        },
+        {
+            "label": "Tailwind build",
+            "type": "shell",
+            "command": ". ${env:HOME}/.nvm/nvm.sh && npx @tailwindcss/cli -i ${workspaceFolder}/srv/static/css/custom.css -o ${workspaceFolder}/srv/static/css/style.css"
+        },
+        {
+            "label": "Templ watch",
+            "type": "shell",
+            "command": "${env:HOME}/go/bin/templ generate -watch"
+        },
+        {
+            "label": "Templ build",
+            "type": "shell",
+            "command": "${env:HOME}/go/bin/templ generate"
+        },
+        {
+            "label": "Watch all",
+            "dependsOn": [
+                "Build sqlc",
+                "Air watch",
+                "Tailwind watch",
+                "Templ watch"
+            ]
+        },
+        {
+            "label": "Build all",
+            "dependsOn": [
+                "Tailwind build",
+                "Templ build",
+                "Build sqlc"
+            ]
+        }
+    ]
+}

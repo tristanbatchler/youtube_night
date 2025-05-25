@@ -1,0 +1,11 @@
+/srv/build/
+/srv//internal/templates/*_templ.go
+/srv/internal/templates/*_templ.txt
+/srv/static/css/style.css
+/srv/db.sqlite
+/srv/.env
+nohup.out
+node_modules/
+package.json
+package-lock.json
+tmp/build-errors.log

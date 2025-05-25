@@ -1,0 +1,17 @@
+package templates
+
+import "github.com/tristanbatchler/youtube_night/srv/internal/db"
+
+templ Home(users []db.User) {
+	<div class="max-w-2xl mx-auto mt-10 p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+		<h1 class="text-3xl font-bold mb-4 text-gray-800 dark:text-gray-100">Home</h1>
+		<h2 class="text-xl font-semibold mb-2 text-gray-700 dark:text-gray-200">Users</h2>
+		<ul class="space-y-2">
+			for _, user := range users {
+				<li class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-800 dark:text-gray-200">
+					{ user.Username }
+				</li>
+			}
+		</ul>
+	</div>
+}
