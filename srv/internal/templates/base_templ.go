@@ -42,7 +42,7 @@ func header(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><script>\n            window.loadTheme = function() {\n\t\t\t\tdocument.documentElement.classList.toggle(\n\t\t\t\t\t\"dark\",\n\t\t\t\t\tlocalStorage.theme === \"dark\" ||\n\t\t\t\t\t\t(!(\"theme\" in localStorage) && window.matchMedia(\"(prefers-color-scheme: dark)\").matches),\n\t\t\t\t);\n\t\t\t}\n\t\t\twindow.loadTheme();\n\n\t\t\twindow.setTheme = function(theme) {\n\t\t\t\tif (theme === \"light\") {\n\t\t\t\t\tlocalStorage.theme = \"light\";\n\t\t\t\t} else if (theme === \"dark\") {\n\t\t\t\t\tlocalStorage.theme = \"dark\";\n\t\t\t\t} else {\n\t\t\t\t\tlocalStorage.removeItem(\"theme\");\n\t\t\t\t}\n\t\t\t\twindow.loadTheme();\n\t\t\t}\n        </script></head>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><script>\n            window.loadTheme = function() {\n\t\t\t\tdocument.documentElement.classList.toggle(\n\t\t\t\t\t\"dark\",\n\t\t\t\t\tlocalStorage.theme === \"dark\" ||\n\t\t\t\t\t\t(!(\"theme\" in localStorage) && window.matchMedia(\"(prefers-color-scheme: dark)\").matches),\n\t\t\t\t);\n\t\t\t}\n\t\t\twindow.loadTheme();\n\n\t\t\twindow.setTheme = function(theme) {\n\t\t\t\tif (theme === \"light\") {\n\t\t\t\t\tlocalStorage.theme = \"light\";\n\t\t\t\t} else if (theme === \"dark\") {\n\t\t\t\t\tlocalStorage.theme = \"dark\";\n\t\t\t\t} else {\n\t\t\t\t\tlocalStorage.removeItem(\"theme\");\n\t\t\t\t}\n\t\t\t\twindow.loadTheme();\n\t\t\t}\n        </script><script src=\"https://unpkg.com/htmx.org@2.0.4\"></script></head>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -125,6 +125,43 @@ func Layout(contents templ.Component, title string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</main></body></html>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func MainContent(contents templ.Component) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var5 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var5 == nil {
+			templ_7745c5c3_Var5 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div id=\"main-content\" class=\"max-w-xl w-full px-6 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl text-center\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = contents.Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

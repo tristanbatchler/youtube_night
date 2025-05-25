@@ -29,6 +29,7 @@ templ header(title string) {
 				window.loadTheme();
 			}
         </script>
+		<script src="https://unpkg.com/htmx.org@2.0.4"></script>
 	</head>
 }
 
@@ -78,4 +79,10 @@ templ Layout(contents templ.Component, title string) {
 			</main>
 		</body>
 	</html>
+}
+
+templ MainContent(contents templ.Component) {
+	<div id="main-content" class="max-w-xl w-full px-6 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl text-center">
+		@contents
+	</div>
 }

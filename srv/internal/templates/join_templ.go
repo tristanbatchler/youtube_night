@@ -8,7 +8,7 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-func homeContents() templ.Component {
+func joinContents() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -29,7 +29,7 @@ func homeContents() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h1 class=\"text-4xl font-extrabold mb-6 tracking-tight\"><span class=\"text-red-900 dark:text-red-300\">YouTube</span> <span class=\"text-indigo-900 dark:text-indigo-300\">Night</span></h1><p class=\"text-lg mb-10 text-gray-700 dark:text-gray-300\">Bring your favorite videos. Guess who submitted what. Praise Akatosh.</p><div class=\"flex flex-col sm:flex-row justify-center gap-4\"><!-- HTMX version of the host button --><button hx-get=\"/host\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"inline-block px-6 py-3 text-lg font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition\">Host a Game</button><!-- HTMX version of the join button --><button hx-get=\"/join\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"inline-block px-6 py-3 text-lg font-medium rounded-xl text-blue-600 bg-blue-100 hover:bg-blue-200 dark:text-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 transition\">Join a Game</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h2 class=\"text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight\">Join a Game</h2><form hx-post=\"/join\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"space-y-6\"><div class=\"text-left\"><label for=\"gameCode\" class=\"block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300\">Game Code</label> <input type=\"text\" id=\"gameCode\" name=\"gameCode\" required placeholder=\"e.g. CHIMP420\" class=\"w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500\"></div><button type=\"submit\" class=\"w-full py-3 px-6 text-lg font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition\">Join Game</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"mt-6 text-sm text-blue-600 hover:underline dark:text-blue-300\">← Back to Home</button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -37,7 +37,7 @@ func homeContents() templ.Component {
 	})
 }
 
-func Home() templ.Component {
+func Join() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -58,7 +58,7 @@ func Home() templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = MainContent(homeContents()).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = MainContent(joinContents()).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

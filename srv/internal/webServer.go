@@ -11,11 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"github.com/tristanbatchler/youtube_night/srv/internal/middleware"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
 	"github.com/tristanbatchler/youtube_night/srv/internal/templates"
 )
+
+const AppName = "YouTube Night"
 
 type server struct {
 	logger     *log.Logger
@@ -60,7 +63,13 @@ func (s *server) Start() error {
 	fileServer := http.FileServer(http.Dir("./srv/static"))
 	router.Handle("GET /static/", http.StripPrefix("/static/", fileServer))
 
-	router.Handle("GET /", middleware.Logging(http.HandlerFunc(s.homeHandler)))
+	loggingMiddleware := middleware.Chain(middleware.Logging, middleware.ContentType)
+
+	router.Handle("GET /", loggingMiddleware(http.HandlerFunc(s.homeHandler)))
+	router.Handle("GET /join", loggingMiddleware(http.HandlerFunc(s.joinPageHandler)))
+	router.Handle("POST /join", loggingMiddleware(http.HandlerFunc(s.joinActionHandler)))
+	router.Handle("GET /host", loggingMiddleware(http.HandlerFunc(s.hostPageHandler)))
+	router.Handle("POST /host", loggingMiddleware(http.HandlerFunc(s.hostActionHandler)))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
@@ -90,20 +99,91 @@ func (s *server) Start() error {
 	return nil
 }
 
-func (s *server) homeHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
-	users, err := s.userStore.GetUsers(ctx)
-	if err != nil {
-		s.logger.Printf("Error retrieving users: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+// A helper function to determine whether a request was made by HTMX, so we can use this to inform
+// whether the response should be a full layout page or just the partial content
+func isHtmxRequest(r *http.Request) bool {
+	return r.Header.Get("HX-Request") == "true"
+}
+
+// A helper function to respond with a template, either as a full page or just the partial content
+// depending on whether the request was made by HTMX and the HTML verb used (full pages only apply
+// to GET requests) the AppName to the title provided. If the template fails to render, a 500 error
+// is returned.
+func renderTemplate(w http.ResponseWriter, r *http.Request, t templ.Component, title ...string) {
+	// Return a partial response if the request was made by HTMX or if the request was not a GET request
+	if isHtmxRequest(r) || r.Method != http.MethodGet {
+		t.Render(r.Context(), w)
 		return
 	}
 
-	component := templates.Home(users)
-	err = templates.Layout(component, "YouTube Night").Render(r.Context(), w)
-	if err != nil {
-		s.logger.Printf("Error rendering home page: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	// Otherwise, format the title
+	if len(title) <= 0 {
+		title = append(title, AppName)
+	} else {
+		title[0] = fmt.Sprintf("%s ~ %s", title[0], AppName)
 	}
+
+	// and render the full page
+	err := templates.Layout(t, title[0]).Render(r.Context(), w)
+	if err != nil {
+		log.Printf("Error when rendering: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (s *server) homeHandler(w http.ResponseWriter, r *http.Request) {
+	// ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	// defer cancel()
+	// users, err := s.userStore.GetUsers(ctx)
+	// if err != nil {
+	// 	s.logger.Printf("Error retrieving users: %v", err)
+	// 	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	renderTemplate(w, r, templates.Home(), "Home")
+}
+
+func (s *server) joinPageHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, r, templates.Join(), "Join")
+}
+
+func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
+	s.logger.Println("Join action handler called")
+	if err := r.ParseForm(); err != nil {
+		s.logger.Printf("Error parsing form: %v", err)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+	formGameCode := r.FormValue("gameCode")
+	if formGameCode == "" {
+		s.logger.Println("Game code is required")
+		http.Error(w, "Game code is required", http.StatusBadRequest)
+		return
+	}
+	s.logger.Printf("Join action for game code: %s", formGameCode)
+	// Here you would handle the join action, e.g., joining a game with the provided code. For now, just log it and redirect back to home.
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (s *server) hostPageHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, r, templates.Host(), "Host")
+}
+
+func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
+	s.logger.Println("Host action handler called")
+	if err := r.ParseForm(); err != nil {
+		s.logger.Printf("Error parsing form: %v", err)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+	formGroupName := r.FormValue("groupName")
+	if formGroupName == "" {
+		s.logger.Println("Group name is required")
+		http.Error(w, "Group name is required", http.StatusBadRequest)
+		return
+	}
+	s.logger.Printf("Host action for group name: %s", formGroupName)
+	// Here you would handle the host action, e.g., creating a new group. For now, just log it and redirect back to home.
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
