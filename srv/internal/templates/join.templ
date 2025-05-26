@@ -4,13 +4,13 @@ import "github.com/tristanbatchler/youtube_night/srv/internal/db"
 
 templ GangsList(gangs []db.Gang) {
 	if len(gangs) > 0 {
-		<ul class="bg-white dark:bg-gray-800 border mt-2 rounded shadow max-h-48 overflow-auto text-left z-10">
+		<ul class="absolute w-full bg-white dark:bg-gray-800 border mt-1 rounded shadow max-h-48 overflow-auto text-left z-20">
 			for _, gang := range gangs {
 				<li
 					class="px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
 					_="on click
-						set #gangName's value to my innerText
-						then set #gangs-list's innerHTML to ''"
+                        set #gangName's value to my innerText
+                        then set #gangs-list's innerHTML to ''"
 				>
 					{ gang.Name }
 				</li>
@@ -30,9 +30,8 @@ templ joinContents() {
 		class="space-y-6"
 	>
 		<div class="text-left">
-			<div id="validation-errors"></div>
 			<label for="gangName" class="input-label">Gang</label>
-			<div class="text-left">
+			<div class="text-left relative">
 				<input
 					type="text"
 					id="gangName"
@@ -51,7 +50,7 @@ templ joinContents() {
 					hx-params="gangName"
 					hx-swap="innerHTML"
 				/>
-				<div id="gangs-list"></div>
+				<div id="gangs-list" class="relative"></div>
 			</div>
 			<label for="gangEntryPassword" class="input-label mt-4">Entry Password</label>
 			<input
@@ -74,7 +73,7 @@ templ joinContents() {
 		hx-get="/"
 		hx-target="#main-content"
 		hx-swap="outerHTML"
-		class="mt-6 text-sm text-blue-600 hover:underline dark:text-blue-300"
+		class="btn-link"
 	>
 		← Back to Home
 	</button>

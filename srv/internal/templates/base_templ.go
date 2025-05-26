@@ -29,14 +29,14 @@ func header(title string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta name=\"htmx-config\" content=\"{\n\t\t\t\t&#34;responseHandling&#34;:[\n\t\t\t\t\t{&#34;code&#34;:&#34;204&#34;, &#34;swap&#34;: false},\n\t\t\t\t\t{&#34;code&#34;:&#34;[23]..&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;422&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;[45]..&#34;, &#34;swap&#34;: false, &#34;error&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;...&#34;, &#34;swap&#34;: true}\n\t\t\t\t]\n\t\t\t}\"><link href=\"./static/css/style.css\" rel=\"stylesheet\"><link rel=\"manifest\" href=\"./static/images/favicons/site.webmanifest\"><link rel=\"icon\" href=\"./static/images/favicons/favicon.ico\" type=\"image/x-icon\"><link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,100,1,200&amp;icon_names=contrast,dark_mode,light_mode\" rel=\"stylesheet\"><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta name=\"htmx-config\" content=\"{\n\t\t\t\t&#34;responseHandling&#34;:[\n\t\t\t\t\t{&#34;code&#34;:&#34;204&#34;, &#34;swap&#34;: false},\n\t\t\t\t\t{&#34;code&#34;:&#34;[23]..&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;422&#34;, &#34;swap&#34;: true}, // Unprocessable entity - for validation errors\n\t\t\t\t\t{&#34;code&#34;:&#34;401&#34;, &#34;swap&#34;: true}, // Unauthorized - for incorrect password\n\t\t\t\t\t{&#34;code&#34;:&#34;[45]..&#34;, &#34;swap&#34;: false, &#34;error&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;...&#34;, &#34;swap&#34;: true}\n\t\t\t\t]\n\t\t\t}\"><link href=\"./static/css/style.css\" rel=\"stylesheet\"><link rel=\"manifest\" href=\"./static/images/favicons/site.webmanifest\"><link rel=\"icon\" href=\"./static/images/favicons/favicon.ico\" type=\"image/x-icon\"><link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,100,1,200&amp;icon_names=contrast,dark_mode,light_mode\" rel=\"stylesheet\"><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 23, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 24, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -202,7 +202,7 @@ func ValidationErrors(errors []string) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(err)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 102, Col: 13}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 103, Col: 13}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {

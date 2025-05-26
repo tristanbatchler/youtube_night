@@ -10,7 +10,8 @@ templ header(title string) {
 				"responseHandling":[
 					{"code":"204", "swap": false},
 					{"code":"[23]..", "swap": true},
-					{"code":"422", "swap": true},
+					{"code":"422", "swap": true}, // Unprocessable entity - for validation errors
+					{"code":"401", "swap": true}, // Unauthorized - for incorrect password
 					{"code":"[45]..", "swap": false, "error": true},
 					{"code":"...", "swap": true}
 				]

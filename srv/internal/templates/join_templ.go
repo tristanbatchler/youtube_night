@@ -32,12 +32,12 @@ func GangsList(gangs []db.Gang) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(gangs) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<ul class=\"bg-white dark:bg-gray-800 border mt-2 rounded shadow max-h-48 overflow-auto text-left z-10\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<ul class=\"absolute w-full bg-white dark:bg-gray-800 border mt-1 rounded shadow max-h-48 overflow-auto text-left z-20\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, gang := range gangs {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<li class=\"px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer\" _=\"on click\n\t\t\t\t\t\tset #gangName&#39;s value to my innerText\n\t\t\t\t\t\tthen set #gangs-list&#39;s innerHTML to &#39;&#39;\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<li class=\"px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer\" _=\"on click\n                        set #gangName&#39;s value to my innerText\n                        then set #gangs-list&#39;s innerHTML to &#39;&#39;\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -85,7 +85,7 @@ func joinContents() templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h2 class=\"text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight\">Join a Game</h2><div id=\"validation-errors\"></div><form hx-post=\"/join\" hx-target=\"#main-content\" hx-target-422=\"#validation-errors\" hx-swap=\"outerHTML\" class=\"space-y-6\"><div class=\"text-left\"><div id=\"validation-errors\"></div><label for=\"gangName\" class=\"input-label\">Gang</label><div class=\"text-left\"><input type=\"text\" id=\"gangName\" name=\"gangName\" autocomplete=\"off\" data-1p-ignore data-lpignore=\"true\" data-protonpass-ignore=\"true\" data-bw-ignore=\"true\" required placeholder=\"e.g. Tamriel Westside\" class=\"input-text\" hx-get=\"/gangs/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#gangs-list\" hx-params=\"gangName\" hx-swap=\"innerHTML\"><div id=\"gangs-list\"></div></div><label for=\"gangEntryPassword\" class=\"input-label mt-4\">Entry Password</label> <input type=\"password\" id=\"gangEntryPassword\" name=\"gangEntryPassword\" required placeholder=\"Enter the gang&#39;s entry password\" class=\"input-text\"></div><button type=\"submit\" class=\"btn-primary\">Join Game</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"mt-6 text-sm text-blue-600 hover:underline dark:text-blue-300\">← Back to Home</button>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h2 class=\"text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight\">Join a Game</h2><div id=\"validation-errors\"></div><form hx-post=\"/join\" hx-target=\"#main-content\" hx-target-422=\"#validation-errors\" hx-swap=\"outerHTML\" class=\"space-y-6\"><div class=\"text-left\"><label for=\"gangName\" class=\"input-label\">Gang</label><div class=\"text-left relative\"><input type=\"text\" id=\"gangName\" name=\"gangName\" autocomplete=\"off\" data-1p-ignore data-lpignore=\"true\" data-protonpass-ignore=\"true\" data-bw-ignore=\"true\" required placeholder=\"e.g. Tamriel Westside\" class=\"input-text\" hx-get=\"/gangs/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#gangs-list\" hx-params=\"gangName\" hx-swap=\"innerHTML\"><div id=\"gangs-list\" class=\"relative\"></div></div><label for=\"gangEntryPassword\" class=\"input-label mt-4\">Entry Password</label> <input type=\"password\" id=\"gangEntryPassword\" name=\"gangEntryPassword\" required placeholder=\"Enter the gang&#39;s entry password\" class=\"input-text\"></div><button type=\"submit\" class=\"btn-primary\">Join Game</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"btn-link\">← Back to Home</button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

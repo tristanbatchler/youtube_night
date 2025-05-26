@@ -148,11 +148,13 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
+
+	validationErrors := make([]string, 0)
+
 	formGangName := r.FormValue("gangName")
 	if formGangName == "" {
 		s.logger.Println("Gang name is required")
-		http.Error(w, "Gang name is required", http.StatusBadRequest)
-		return
+		validationErrors = append(validationErrors, "Gang name is required")
 	}
 	s.logger.Printf("Join action for gang name: %s", formGangName)
 
@@ -165,15 +167,15 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 		switch err.(type) {
 		case *stores.ErrGangNotFound:
 			s.logger.Printf("Gang '%s' not found", formGangName)
-			http.Error(w, "Gang not found", http.StatusUnprocessableEntity)
+			validationErrors = append(validationErrors, "Gang not found")
 		case *stores.ErrGangNameInvalid:
 			s.logger.Printf("Gang name '%s' is invalid", formGangName)
-			http.Error(w, "Gang name is invalid", http.StatusUnprocessableEntity)
+			validationErrors = append(validationErrors, "Gang name is invalid")
 		default:
 			s.logger.Printf("Error retrieving gang: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
-		return
 	}
 	s.logger.Printf("Gang found: %v", gang)
 
@@ -181,15 +183,25 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 	formGangEntryPassword := r.FormValue("gangEntryPassword")
 	if formGangEntryPassword == "" {
 		s.logger.Println("Gang entry password is required")
-		http.Error(w, "Gang entry password is required", http.StatusBadRequest)
-		return
+		validationErrors = append(validationErrors, "Gang entry password is required")
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(gang.EntryPasswordHash), []byte(formGangEntryPassword))
-	if err != nil {
+
+	if err == bcrypt.ErrMismatchedHashAndPassword {
+		s.logger.Printf("Gang entry password is incorrect for gang: %s", gang.Name)
+		validationErrors = append(validationErrors, "Gang entry password is incorrect")
+	} else if err != nil {
 		s.logger.Printf("Error comparing gang entry password: %v", err)
-		http.Error(w, "Invalid gang entry password", http.StatusUnauthorized)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	if len(validationErrors) > 0 {
+		s.logger.Printf("Validation errors: %v", validationErrors)
+		renderTemplate(w, r, templates.ValidationErrors(validationErrors), http.StatusUnprocessableEntity)
+		return
+	}
+
 	s.logger.Printf("Gang entry password is correct for gang: %s", gang.Name)
 
 	// Print a success message
@@ -236,6 +248,15 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 	if formGangEntryPassword == "" {
 		s.logger.Println("Gang entry password is required")
 		validationErrors = append(validationErrors, "Gang entry password is required")
+	}
+
+	formGangEntryPasswordConfirm := r.FormValue("gangEntryPasswordConfirm")
+	if formGangEntryPasswordConfirm == "" {
+		s.logger.Println("Gang entry password confirmation is required")
+		validationErrors = append(validationErrors, "Gang entry password confirmation is required")
+	} else if formGangEntryPassword != formGangEntryPasswordConfirm {
+		s.logger.Println("Gang entry passwords do not match")
+		validationErrors = append(validationErrors, "Gang entry passwords do not match")
 	}
 
 	passwordHashBytes, err := bcrypt.GenerateFromPassword([]byte(formGangEntryPassword), bcrypt.DefaultCost)
