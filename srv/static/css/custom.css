@@ -29,3 +29,24 @@
 .avatar-option {
     @apply text-3xl rounded-full border-2 border-transparent peer-checked:border-blue-500 dark:peer-checked:border-blue-400 transition mb-1;
 }
+
+/* Recommended icon sizes */
+span.size-20 {
+    font-size: 20px;
+    font-variation-settings: 'OPSZ' 20;
+}
+
+span.size-24 {
+    font-size: 24px;
+    font-variation-settings: 'OPSZ' 24;
+}
+
+span.size-40 {
+    font-size: 40px;
+    font-variation-settings: 'OPSZ' 40;
+}
+
+span.size-48 {
+    font-size: 48px;
+    font-variation-settings: 'OPSZ' 48;
+}
