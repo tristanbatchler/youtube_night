@@ -4,6 +4,18 @@ templ header(title string) {
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<meta
+			name="htmx-config"
+			content='{
+				"responseHandling":[
+					{"code":"204", "swap": false},
+					{"code":"[23]..", "swap": true},
+					{"code":"422", "swap": true},
+					{"code":"[45]..", "swap": false, "error": true},
+					{"code":"...", "swap": true}
+				]
+			}'
+		/>
 		<link href="./static/css/style.css" rel="stylesheet"/>
 		<link rel="manifest" href="./static/images/favicons/site.webmanifest"/>
 		<link rel="icon" href="./static/images/favicons/favicon.ico" type="image/x-icon"/>
@@ -31,6 +43,8 @@ templ header(title string) {
 			}
         </script>
 		<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+		<script src="https://unpkg.com/hyperscript.org@0.9.14"></script>
+		<script src="https://unpkg.com/htmx-ext-response-targets@2.0.2"></script>
 	</head>
 }
 
@@ -66,7 +80,7 @@ templ Layout(contents templ.Component, title string) {
 	<!DOCTYPE html>
 	<html lang="en">
 		@header(title)
-		<body class="bg-gray-50 dark:bg-gray-900 min-h-screen font-sans text-gray-800 dark:text-gray-100">
+		<body class="bg-gray-50 dark:bg-gray-900 min-h-screen font-sans text-gray-800 dark:text-gray-100" hx-ext="response-targets">
 			@themeToggle()
 			<main class="flex flex-col items-center justify-center min-h-screen">
 				@contents
@@ -78,5 +92,15 @@ templ Layout(contents templ.Component, title string) {
 templ MainContent(contents templ.Component) {
 	<div id="main-content" class="card">
 		@contents
+	</div>
+}
+
+templ ValidationErrors(errors []string) {
+	<div id="validation-errors">
+		<ul class="text-red-600 dark:text-red-400">
+			for _, err := range errors {
+				<li>{ err }</li>
+			}
+		</ul>
 	</div>
 }

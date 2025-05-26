@@ -9,7 +9,8 @@ type Middleware func(http.Handler) http.Handler
 
 var Logging Middleware = func(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Request: %s %s", r.Method, r.URL.Path)
+		xff := r.Header.Get("X-Forwarded-For")
+		log.Printf("Request: %s %s from %s", r.Method, r.URL.Path, xff)
 
 		next.ServeHTTP(w, r)
 	})

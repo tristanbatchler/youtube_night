@@ -42,3 +42,13 @@ INSERT INTO users_gangs (
 ) VALUES (
     $1, $2, $3
 );
+
+-- name: SearchGangs :many
+SELECT * FROM gangs
+WHERE name ILIKE '%' || $1 || '%'
+ORDER BY name
+LIMIT 10;
+
+-- name: GetGangByName :one
+SELECT * FROM gangs
+WHERE name = $1;

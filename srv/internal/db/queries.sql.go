@@ -100,6 +100,23 @@ func (q *Queries) GetGangById(ctx context.Context, id int32) (Gang, error) {
 	return i, err
 }
 
+const getGangByName = `-- name: GetGangByName :one
+SELECT id, name, entry_password_hash, created_at FROM gangs
+WHERE name = $1
+`
+
+func (q *Queries) GetGangByName(ctx context.Context, name string) (Gang, error) {
+	row := q.db.QueryRow(ctx, getGangByName, name)
+	var i Gang
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.EntryPasswordHash,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getGangs = `-- name: GetGangs :many
 SELECT id, name, entry_password_hash, created_at FROM gangs
 ORDER BY name
@@ -201,6 +218,38 @@ func (q *Queries) GetUsersInGang(ctx context.Context, gangID int32) ([]User, err
 			&i.AvatarPath,
 			&i.CreatedAt,
 			&i.LastLogin,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchGangs = `-- name: SearchGangs :many
+SELECT id, name, entry_password_hash, created_at FROM gangs
+WHERE name ILIKE '%' || $1 || '%'
+ORDER BY name
+LIMIT 10
+`
+
+func (q *Queries) SearchGangs(ctx context.Context, dollar_1 pgtype.Text) ([]Gang, error) {
+	rows, err := q.db.Query(ctx, searchGangs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Gang
+	for rows.Next() {
+		var i Gang
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.EntryPasswordHash,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

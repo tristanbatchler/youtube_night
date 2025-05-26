@@ -29,20 +29,20 @@ func header(title string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><link href=\"./static/css/style.css\" rel=\"stylesheet\"><link rel=\"manifest\" href=\"./static/images/favicons/site.webmanifest\"><link rel=\"icon\" href=\"./static/images/favicons/favicon.ico\" type=\"image/x-icon\"><link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,100,1,200&amp;icon_names=contrast,dark_mode,light_mode\" rel=\"stylesheet\"><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta name=\"htmx-config\" content=\"{\n\t\t\t\t&#34;responseHandling&#34;:[\n\t\t\t\t\t{&#34;code&#34;:&#34;204&#34;, &#34;swap&#34;: false},\n\t\t\t\t\t{&#34;code&#34;:&#34;[23]..&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;422&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;[45]..&#34;, &#34;swap&#34;: false, &#34;error&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;...&#34;, &#34;swap&#34;: true}\n\t\t\t\t]\n\t\t\t}\"><link href=\"./static/css/style.css\" rel=\"stylesheet\"><link rel=\"manifest\" href=\"./static/images/favicons/site.webmanifest\"><link rel=\"icon\" href=\"./static/images/favicons/favicon.ico\" type=\"image/x-icon\"><link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,100,1,200&amp;icon_names=contrast,dark_mode,light_mode\" rel=\"stylesheet\"><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 11, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 23, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><script>\n            window.loadTheme = function() {\n\t\t\t\tdocument.documentElement.classList.toggle(\n\t\t\t\t\t\"dark\",\n\t\t\t\t\tlocalStorage.theme === \"dark\" ||\n\t\t\t\t\t\t(!(\"theme\" in localStorage) && window.matchMedia(\"(prefers-color-scheme: dark)\").matches),\n\t\t\t\t);\n\t\t\t}\n\t\t\twindow.loadTheme();\n\n\t\t\twindow.setTheme = function(theme) {\n\t\t\t\tif (theme === \"light\") {\n\t\t\t\t\tlocalStorage.theme = \"light\";\n\t\t\t\t} else if (theme === \"dark\") {\n\t\t\t\t\tlocalStorage.theme = \"dark\";\n\t\t\t\t} else {\n\t\t\t\t\tlocalStorage.removeItem(\"theme\");\n\t\t\t\t}\n\t\t\t\twindow.loadTheme();\n\t\t\t}\n        </script><script src=\"https://unpkg.com/htmx.org@2.0.4\"></script></head>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><script>\n            window.loadTheme = function() {\n\t\t\t\tdocument.documentElement.classList.toggle(\n\t\t\t\t\t\"dark\",\n\t\t\t\t\tlocalStorage.theme === \"dark\" ||\n\t\t\t\t\t\t(!(\"theme\" in localStorage) && window.matchMedia(\"(prefers-color-scheme: dark)\").matches),\n\t\t\t\t);\n\t\t\t}\n\t\t\twindow.loadTheme();\n\n\t\t\twindow.setTheme = function(theme) {\n\t\t\t\tif (theme === \"light\") {\n\t\t\t\t\tlocalStorage.theme = \"light\";\n\t\t\t\t} else if (theme === \"dark\") {\n\t\t\t\t\tlocalStorage.theme = \"dark\";\n\t\t\t\t} else {\n\t\t\t\t\tlocalStorage.removeItem(\"theme\");\n\t\t\t\t}\n\t\t\t\twindow.loadTheme();\n\t\t\t}\n        </script><script src=\"https://unpkg.com/htmx.org@2.0.4\"></script><script src=\"https://unpkg.com/hyperscript.org@0.9.14\"></script><script src=\"https://unpkg.com/htmx-ext-response-targets@2.0.2\"></script></head>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -108,7 +108,7 @@ func Layout(contents templ.Component, title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<body class=\"bg-gray-50 dark:bg-gray-900 min-h-screen font-sans text-gray-800 dark:text-gray-100\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<body class=\"bg-gray-50 dark:bg-gray-900 min-h-screen font-sans text-gray-800 dark:text-gray-100\" hx-ext=\"response-targets\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -162,6 +162,58 @@ func MainContent(contents templ.Component) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func ValidationErrors(errors []string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var6 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var6 == nil {
+			templ_7745c5c3_Var6 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div id=\"validation-errors\"><ul class=\"text-red-600 dark:text-red-400\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for _, err := range errors {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<li>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(err)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 102, Col: 13}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</li>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</ul></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

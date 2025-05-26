@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -54,19 +53,6 @@ func NewWebServer(port int, logger *log.Logger, userStore *stores.UserStore, gan
 func (s *server) Start() error {
 	s.logger.Printf("Starting server on port %d", s.port)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	user, err := s.userStore.CreateUser(ctx, db.CreateUserParams{
-		Name:       "admin",
-		AvatarPath: pgtype.Text{String: "dog", Valid: true},
-	})
-	var alreadyExistsErr *stores.UserAlreadyExistsError
-	if err != nil && !errors.As(err, &alreadyExistsErr) {
-		s.logger.Printf("Error creating default user: %v", err)
-	} else {
-		s.logger.Printf("Default user created successfully: %v", user)
-	}
-
 	var stopChan chan os.Signal
 
 	router := http.NewServeMux()
@@ -81,6 +67,9 @@ func (s *server) Start() error {
 	router.Handle("POST /join", loggingMiddleware(http.HandlerFunc(s.joinActionHandler)))
 	router.Handle("GET /host", loggingMiddleware(http.HandlerFunc(s.hostPageHandler)))
 	router.Handle("POST /host", loggingMiddleware(http.HandlerFunc(s.hostActionHandler)))
+
+	// Search gangs
+	router.Handle("GET /gangs/search", loggingMiddleware(http.HandlerFunc(s.searchGangsHandler)))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
@@ -120,7 +109,9 @@ func isHtmxRequest(r *http.Request) bool {
 // depending on whether the request was made by HTMX and the HTML verb used (full pages only apply
 // to GET requests) the AppName to the title provided. If the template fails to render, a 500 error
 // is returned.
-func renderTemplate(w http.ResponseWriter, r *http.Request, t templ.Component, title ...string) {
+func renderTemplate(w http.ResponseWriter, r *http.Request, t templ.Component, statusCode int, title ...string) {
+	w.WriteHeader(statusCode)
+
 	// Return a partial response if the request was made by HTMX or if the request was not a GET request
 	if isHtmxRequest(r) || r.Method != http.MethodGet {
 		t.Render(r.Context(), w)
@@ -143,20 +134,11 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, t templ.Component, t
 }
 
 func (s *server) homeHandler(w http.ResponseWriter, r *http.Request) {
-	// ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	// defer cancel()
-	// users, err := s.userStore.GetUsers(ctx)
-	// if err != nil {
-	// 	s.logger.Printf("Error retrieving users: %v", err)
-	// 	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	// 	return
-	// }
-
-	renderTemplate(w, r, templates.Home(), "Home")
+	renderTemplate(w, r, templates.Home(), http.StatusOK, "Home")
 }
 
 func (s *server) joinPageHandler(w http.ResponseWriter, r *http.Request) {
-	renderTemplate(w, r, templates.Join(), "Join")
+	renderTemplate(w, r, templates.Join(), http.StatusOK, "Join")
 }
 
 func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
@@ -166,19 +148,59 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	formGameCode := r.FormValue("gameCode")
-	if formGameCode == "" {
-		s.logger.Println("Game code is required")
-		http.Error(w, "Game code is required", http.StatusBadRequest)
+	formGangName := r.FormValue("gangName")
+	if formGangName == "" {
+		s.logger.Println("Gang name is required")
+		http.Error(w, "Gang name is required", http.StatusBadRequest)
 		return
 	}
-	s.logger.Printf("Join action for game code: %s", formGameCode)
-	// Here you would handle the join action, e.g., joining a game with the provided code. For now, just log it and redirect back to home.
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	s.logger.Printf("Join action for gang name: %s", formGangName)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	gang, err := s.gangStore.GetGangByName(ctx, formGangName)
+	if err != nil {
+		s.logger.Printf("Error retrieving gang by name: %v", err)
+
+		switch err.(type) {
+		case *stores.ErrGangNotFound:
+			s.logger.Printf("Gang '%s' not found", formGangName)
+			http.Error(w, "Gang not found", http.StatusUnprocessableEntity)
+		case *stores.ErrGangNameInvalid:
+			s.logger.Printf("Gang name '%s' is invalid", formGangName)
+			http.Error(w, "Gang name is invalid", http.StatusUnprocessableEntity)
+		default:
+			s.logger.Printf("Error retrieving gang: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
+	}
+	s.logger.Printf("Gang found: %v", gang)
+
+	// Check if they got the password right
+	formGangEntryPassword := r.FormValue("gangEntryPassword")
+	if formGangEntryPassword == "" {
+		s.logger.Println("Gang entry password is required")
+		http.Error(w, "Gang entry password is required", http.StatusBadRequest)
+		return
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(gang.EntryPasswordHash), []byte(formGangEntryPassword))
+	if err != nil {
+		s.logger.Printf("Error comparing gang entry password: %v", err)
+		http.Error(w, "Invalid gang entry password", http.StatusUnauthorized)
+		return
+	}
+	s.logger.Printf("Gang entry password is correct for gang: %s", gang.Name)
+
+	// Print a success message
+	s.logger.Printf("Successfully joined gang: %s", gang.Name)
+
+	// Redirect back to the home page for now
+	renderTemplate(w, r, templates.Home(), http.StatusOK, "Home - Join Successful")
 }
 
 func (s *server) hostPageHandler(w http.ResponseWriter, r *http.Request) {
-	renderTemplate(w, r, templates.Host(), "Host")
+	renderTemplate(w, r, templates.Host(), http.StatusOK, "Host")
 }
 
 func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
@@ -189,33 +211,31 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	validationErrors := make([]string, 0)
+
 	formHostName := r.FormValue("hostName")
 	if formHostName == "" {
 		s.logger.Println("Host name is required")
-		http.Error(w, "Host name is required", http.StatusBadRequest)
-		return
+		validationErrors = append(validationErrors, "Host name is required")
 	}
 
 	formHostAvatar := r.FormValue("hostAvatar")
 	if formHostAvatar == "" {
 		s.logger.Println("Host avatar is required")
-		http.Error(w, "Host avatar is required", http.StatusBadRequest)
-		return
+		validationErrors = append(validationErrors, "Host avatar is required")
 	}
 
 	formGangName := r.FormValue("gangName")
 	if formGangName == "" {
 		s.logger.Println("Gang name is required")
-		http.Error(w, "Gang name is required", http.StatusBadRequest)
-		return
+		validationErrors = append(validationErrors, "Gang name is required")
 	}
 	s.logger.Printf("Host action for host name: %s, avatar: %s, gang name: %s", formHostName, formHostAvatar, formGangName)
 
 	formGangEntryPassword := r.FormValue("gangEntryPassword")
 	if formGangEntryPassword == "" {
 		s.logger.Println("Gang entry password is required")
-		http.Error(w, "Gang entry password is required", http.StatusBadRequest)
-		return
+		validationErrors = append(validationErrors, "Gang entry password is required")
 	}
 
 	passwordHashBytes, err := bcrypt.GenerateFromPassword([]byte(formGangEntryPassword), bcrypt.DefaultCost)
@@ -242,10 +262,42 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	gang, err := s.gangStore.CreateGang(ctx, formGangName, user.ID, string(passwordHashBytes))
 	if err != nil {
-		s.logger.Printf("Error creating gang: %v", err)
-		http.Error(w, "Error creating gang", http.StatusInternalServerError)
+		switch err.(type) {
+		case *stores.ErrGangNameAlreadyExists:
+			s.logger.Printf("Gang name '%s' already exists", formGangName)
+			validationErrors = append(validationErrors, "Gang name already exists")
+		case *stores.ErrGangNameInvalid:
+			s.logger.Printf("Gang name '%s' is invalid", formGangName)
+			validationErrors = append(validationErrors, "Gang name is invalid")
+		default:
+			s.logger.Printf("Error creating gang: %v", err)
+			http.Error(w, "Error creating gang", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if len(validationErrors) > 0 {
+		renderTemplate(w, r, templates.ValidationErrors(validationErrors), http.StatusUnprocessableEntity)
 		return
 	}
+
 	s.logger.Printf("Host action successful: user %v created and gang %v created", user, gang)
-	renderTemplate(w, r, templates.Home(), "Home - Host Successful")
+	renderTemplate(w, r, templates.Home(), http.StatusOK, "Home - Host Successful")
+}
+
+func (s *server) searchGangsHandler(w http.ResponseWriter, r *http.Request) {
+	// Get search query from the parameters
+	query := r.URL.Query().Get("gangName")
+	s.logger.Printf("Searching gangs with query: %s", query)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	gangs, err := s.gangStore.SearchGangs(ctx, query)
+	if err != nil {
+		s.logger.Printf("Error searching gangs: %v", err)
+		http.Error(w, "Error searching gangs", http.StatusInternalServerError)
+		return
+	}
+	s.logger.Printf("Found %d gangs matching query '%s'", len(gangs), query)
+	renderTemplate(w, r, templates.GangsList(gangs), http.StatusOK)
 }

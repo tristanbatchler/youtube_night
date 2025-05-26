@@ -6,7 +6,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
@@ -32,14 +31,6 @@ func NewUserStore(dbPool *pgxpool.Pool, logger *log.Logger) (*UserStore, error) 
 	}, nil
 }
 
-type UserAlreadyExistsError struct {
-	Username string
-}
-
-func (e *UserAlreadyExistsError) Error() string {
-	return fmt.Sprintf("user with username '%s' already exists", e.Username)
-}
-
 type UserAlreadyInGangError struct {
 	UserName string
 	GangName string
@@ -63,9 +54,7 @@ func (us *UserStore) CreateUser(ctx context.Context, params db.CreateUserParams)
 	params.Name = strings.TrimSpace(params.Name)
 
 	user, err := us.queries.CreateUser(ctx, params)
-	if db.ErrorHasCode(err, pgerrcode.UniqueViolation) {
-		return emptyUser, &UserAlreadyExistsError{Username: params.Name}
-	} else if err != nil {
+	if err != nil {
 		return emptyUser, fmt.Errorf("error creating user: %w", err)
 	}
 	return user, nil

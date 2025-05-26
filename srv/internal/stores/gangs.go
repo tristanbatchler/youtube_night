@@ -6,6 +6,9 @@ import (
 	"log"
 	"strings"
 
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 )
@@ -14,6 +17,30 @@ type GangStore struct {
 	dbPool  *pgxpool.Pool
 	queries *db.Queries
 	logger  *log.Logger
+}
+
+type ErrGangNotFound struct {
+	GangName string
+}
+
+func (e *ErrGangNotFound) Error() string {
+	return fmt.Sprintf("gang '%s' not found", e.GangName)
+}
+
+type ErrGangNameInvalid struct {
+	GangName string
+}
+
+func (e *ErrGangNameInvalid) Error() string {
+	return fmt.Sprintf("gang name '%s' is invalid", e.GangName)
+}
+
+type ErrGangNameAlreadyExists struct {
+	GangName string
+}
+
+func (e *ErrGangNameAlreadyExists) Error() string {
+	return fmt.Sprintf("gang name '%s' already exists", e.GangName)
 }
 
 func NewGangStore(dbPool *pgxpool.Pool, logger *log.Logger) (*GangStore, error) {
@@ -34,7 +61,7 @@ func (gs *GangStore) CreateGang(ctx context.Context, name string, hostUserId int
 	emptyGang := db.Gang{}
 
 	if name == "" {
-		return emptyGang, fmt.Errorf("name cannot be empty")
+		return emptyGang, &ErrGangNameInvalid{GangName: name}
 	}
 
 	name = strings.TrimSpace(name)
@@ -51,6 +78,9 @@ func (gs *GangStore) CreateGang(ctx context.Context, name string, hostUserId int
 		EntryPasswordHash: entryPasswordHash,
 	})
 	if err != nil {
+		if db.ErrorHasCode(err, pgerrcode.UniqueViolation) {
+			return emptyGang, &ErrGangNameAlreadyExists{GangName: name}
+		}
 		return emptyGang, fmt.Errorf("error creating gang: %w", err)
 	}
 	err = qtx.AssociateUserWithGang(ctx, db.AssociateUserWithGangParams{
@@ -73,4 +103,30 @@ func (gs *GangStore) GetGangs(ctx context.Context) ([]db.Gang, error) {
 		return nil, fmt.Errorf("error retrieving gangs: %w", err)
 	}
 	return gangs, nil
+}
+
+func (gs *GangStore) SearchGangs(ctx context.Context, searchTerm string) ([]db.Gang, error) {
+	if searchTerm == "" {
+		return gs.GetGangs(ctx)
+	}
+	gangs, err := gs.queries.SearchGangs(ctx, pgtype.Text{String: searchTerm, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("error searching gangs: %w", err)
+	}
+	return gangs, nil
+}
+
+func (gs *GangStore) GetGangByName(ctx context.Context, name string) (db.Gang, error) {
+	emptyGang := db.Gang{}
+
+	if name == "" {
+		return emptyGang, &ErrGangNameInvalid{GangName: name}
+	}
+	gang, err := gs.queries.GetGangByName(ctx, name)
+	if err == pgx.ErrNoRows {
+		return emptyGang, &ErrGangNotFound{GangName: name}
+	} else if err != nil {
+		return emptyGang, fmt.Errorf("error retrieving gang by name: %w", err)
+	}
+	return gang, nil
 }

@@ -8,7 +8,9 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-func joinContents() templ.Component {
+import "github.com/tristanbatchler/youtube_night/srv/internal/db"
+
+func GangsList(gangs []db.Gang) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -29,7 +31,61 @@ func joinContents() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h2 class=\"text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight\">Join a Game</h2><form hx-post=\"/join\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"space-y-6\"><div class=\"text-left\"><label for=\"gameCode\" class=\"input-label\">Game Code</label> <input type=\"text\" id=\"gameCode\" name=\"gameCode\" required placeholder=\"e.g. CHIMP420\" class=\"input-text\"></div><button type=\"submit\" class=\"btn-primary\">Join Game</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"mt-6 text-sm text-blue-600 hover:underline dark:text-blue-300\">← Back to Home</button>")
+		if len(gangs) > 0 {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<ul class=\"bg-white dark:bg-gray-800 border mt-2 rounded shadow max-h-48 overflow-auto text-left z-10\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, gang := range gangs {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<li class=\"px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer\" _=\"on click\n\t\t\t\t\t\tset #gangName&#39;s value to my innerText\n\t\t\t\t\t\tthen set #gangs-list&#39;s innerHTML to &#39;&#39;\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var2 string
+				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(gang.Name)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/join.templ`, Line: 15, Col: 16}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</li>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</ul>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		return nil
+	})
+}
+
+func joinContents() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var3 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var3 == nil {
+			templ_7745c5c3_Var3 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h2 class=\"text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight\">Join a Game</h2><div id=\"validation-errors\"></div><form hx-post=\"/join\" hx-target=\"#main-content\" hx-target-422=\"#validation-errors\" hx-swap=\"outerHTML\" class=\"space-y-6\"><div class=\"text-left\"><div id=\"validation-errors\"></div><label for=\"gangName\" class=\"input-label\">Gang</label><div class=\"text-left\"><input type=\"text\" id=\"gangName\" name=\"gangName\" autocomplete=\"off\" data-1p-ignore data-lpignore=\"true\" data-protonpass-ignore=\"true\" data-bw-ignore=\"true\" required placeholder=\"e.g. Tamriel Westside\" class=\"input-text\" hx-get=\"/gangs/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#gangs-list\" hx-params=\"gangName\" hx-swap=\"innerHTML\"><div id=\"gangs-list\"></div></div><label for=\"gangEntryPassword\" class=\"input-label mt-4\">Entry Password</label> <input type=\"password\" id=\"gangEntryPassword\" name=\"gangEntryPassword\" required placeholder=\"Enter the gang&#39;s entry password\" class=\"input-text\"></div><button type=\"submit\" class=\"btn-primary\">Join Game</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"mt-6 text-sm text-blue-600 hover:underline dark:text-blue-300\">← Back to Home</button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -53,9 +109,9 @@ func Join() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var2 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var2 == nil {
-			templ_7745c5c3_Var2 = templ.NopComponent
+		templ_7745c5c3_Var4 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var4 == nil {
+			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = MainContent(joinContents()).Render(ctx, templ_7745c5c3_Buffer)

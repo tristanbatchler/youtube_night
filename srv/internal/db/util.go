@@ -34,5 +34,6 @@ func ErrorHasCode(err error, code string) bool {
 	if errors.As(err, &pgErr) {
 		return pgErr.Code == code
 	}
+
 	return false
 }

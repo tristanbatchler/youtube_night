@@ -17,9 +17,11 @@ templ avatarOption(label string, emoji string, selected bool) {
 
 templ hostContents() {
 	<h2 class="text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight">Host a Game</h2>
+	<div id="validation-errors"></div>
 	<form
 		hx-post="/host"
 		hx-target="#main-content"
+		hx-target-422="#validation-errors"
 		hx-swap="outerHTML"
 		class="space-y-6"
 	>
@@ -30,7 +32,7 @@ templ hostContents() {
 				id="hostName"
 				name="hostName"
 				required
-				placeholder="e.g. Sotha Sil"
+				placeholder="e.g. Totius Sextius"
 				class="input-text"
 			/>
 		</div>
@@ -55,6 +57,11 @@ templ hostContents() {
 				required
 				placeholder="e.g. Tamriel Westside"
 				class="input-text"
+				autocomplete="off"
+				data-1p-ignore
+				data-lpignore="true"
+				data-protonpass-ignore="true"
+				data-bw-ignore="true"
 			/>
 		</div>
 		<div class="text-left">

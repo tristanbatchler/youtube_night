@@ -1,21 +1,65 @@
 package templates
 
+import "github.com/tristanbatchler/youtube_night/srv/internal/db"
+
+templ GangsList(gangs []db.Gang) {
+	if len(gangs) > 0 {
+		<ul class="bg-white dark:bg-gray-800 border mt-2 rounded shadow max-h-48 overflow-auto text-left z-10">
+			for _, gang := range gangs {
+				<li
+					class="px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+					_="on click
+						set #gangName's value to my innerText
+						then set #gangs-list's innerHTML to ''"
+				>
+					{ gang.Name }
+				</li>
+			}
+		</ul>
+	}
+}
+
 templ joinContents() {
 	<h2 class="text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight">Join a Game</h2>
+	<div id="validation-errors"></div>
 	<form
 		hx-post="/join"
 		hx-target="#main-content"
+		hx-target-422="#validation-errors"
 		hx-swap="outerHTML"
 		class="space-y-6"
 	>
 		<div class="text-left">
-			<label for="gameCode" class="input-label">Game Code</label>
+			<div id="validation-errors"></div>
+			<label for="gangName" class="input-label">Gang</label>
+			<div class="text-left">
+				<input
+					type="text"
+					id="gangName"
+					name="gangName"
+					autocomplete="off"
+					data-1p-ignore
+					data-lpignore="true"
+					data-protonpass-ignore="true"
+					data-bw-ignore="true"
+					required
+					placeholder="e.g. Tamriel Westside"
+					class="input-text"
+					hx-get="/gangs/search"
+					hx-trigger="keyup changed delay:200ms"
+					hx-target="#gangs-list"
+					hx-params="gangName"
+					hx-swap="innerHTML"
+				/>
+				<div id="gangs-list"></div>
+			</div>
+			<label for="gangEntryPassword" class="input-label mt-4">Entry Password</label>
 			<input
-				type="text"
-				id="gameCode"
-				name="gameCode"
+				type="password"
+				id="gangEntryPassword"
+				name="gangEntryPassword"
 				required
-				placeholder="e.g. CHIMP420"
+				placeholder="Enter the gang's entry password"
 				class="input-text"
 			/>
 		</div>
