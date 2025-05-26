@@ -55,7 +55,7 @@ func avatarOption(label string, emoji string, selected bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"> <span class=\"text-3xl rounded-full border-2 border-transparent peer-checked:border-blue-500 dark:peer-checked:border-blue-400 transition mb-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"> <span class=\"avatar-option\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
