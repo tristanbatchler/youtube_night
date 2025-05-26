@@ -94,6 +94,40 @@ func Auth(logger *log.Logger, sessionStore *stores.SessionStore, userStore *stor
 	}
 }
 
+// RedirectIfAuthenticated redirects users to the dashboard if they're already authenticated
+func RedirectIfAuthenticated(logger *log.Logger, sessionStore *stores.SessionStore, endpoint string) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Check for session cookie
+			cookie, err := r.Cookie(SessionCookieName)
+			if err != nil {
+				// No session cookie, continue to requested page
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Get session from cookie value
+			sessionToken := cookie.Value
+			if sessionToken == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Validate the session token
+			sessionData, valid, err := sessionStore.ValidateToken(sessionToken)
+			if err != nil || !valid || sessionData == nil {
+				// Invalid session, clear the cookie and continue
+				clearSessionAndRedirect(w, r)
+				return
+			}
+
+			// User is authenticated, redirect to dashboard
+			logger.Printf("Authenticated user accessing %s, redirecting to dashboard", r.URL.Path)
+			http.Redirect(w, r, endpoint, http.StatusSeeOther)
+		})
+	}
+}
+
 func clearSessionAndRedirect(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookieName,

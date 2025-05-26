@@ -68,6 +68,7 @@ You should replace the placeholders (including the angle brackets) with your act
 
 ## ToDo
  - [x] Add favicons
+ - [ ] Abstract emoji/avatar handling/showing
  - [ ] Make stores struct to tidy up dependency injection
  - [ ] Design the page and functionality
  - [ ] Implement the page and functionality

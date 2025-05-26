@@ -68,11 +68,13 @@ func (s *server) Start() error {
 	router.Handle("GET /static/", http.StripPrefix("/static/", fileServer))
 
 	loggingMiddleware := middleware.Chain(middleware.Logging, middleware.ContentType)
+	redirectIfAuthMiddleware := middleware.RedirectIfAuthenticated(s.logger, s.sessionStore, "/dashboard")
+	publicMiddleware := middleware.Chain(loggingMiddleware, redirectIfAuthMiddleware)
 
-	router.Handle("GET /", loggingMiddleware(http.HandlerFunc(s.homeHandler)))
-	router.Handle("GET /join", loggingMiddleware(http.HandlerFunc(s.joinPageHandler)))
-	router.Handle("POST /join", loggingMiddleware(http.HandlerFunc(s.joinActionHandler)))
-	router.Handle("GET /host", loggingMiddleware(http.HandlerFunc(s.hostPageHandler)))
+	router.Handle("GET /", publicMiddleware(http.HandlerFunc(s.homeHandler)))
+	router.Handle("GET /join", publicMiddleware(http.HandlerFunc(s.joinPageHandler)))
+	router.Handle("POST /join", publicMiddleware(http.HandlerFunc(s.joinActionHandler)))
+	router.Handle("GET /host", publicMiddleware(http.HandlerFunc(s.hostPageHandler)))
 	router.Handle("POST /host", loggingMiddleware(http.HandlerFunc(s.hostActionHandler)))
 	router.Handle("GET /gangs/search", loggingMiddleware(http.HandlerFunc(s.searchGangsHandler)))
 
@@ -81,6 +83,7 @@ func (s *server) Start() error {
 	protectedMiddleware := middleware.Chain(middleware.Logging, middleware.ContentType, authMiddleware)
 	router.Handle("GET /dashboard", protectedMiddleware(http.HandlerFunc(s.dashboardHandler)))
 	router.Handle("POST /logout", loggingMiddleware(http.HandlerFunc(s.logoutHandler)))
+	router.Handle("GET /logout", loggingMiddleware(http.HandlerFunc(s.logoutHandler)))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
@@ -226,15 +229,15 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get avatar from form or use default
-	userAvatar := r.FormValue("userAvatar")
-	if userAvatar == "" {
-		userAvatar = "👤"
+	avatar := r.FormValue("avatar")
+	if avatar == "" {
+		avatar = "👤"
 	}
 
 	// Create the user
 	user, err := s.userStore.CreateUser(ctx, db.CreateUserParams{
 		Name:       name,
-		AvatarPath: pgtype.Text{String: userAvatar, Valid: true},
+		AvatarPath: pgtype.Text{String: avatar, Valid: true},
 	})
 	if err != nil {
 		s.logger.Printf("Error creating user: %v", err)
@@ -255,7 +258,7 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create a session for the user
-	middleware.CreateSessionCookie(w, user.ID, gang.ID, gang.Name, user.Name, userAvatar)
+	middleware.CreateSessionCookie(w, user.ID, gang.ID, gang.Name, user.Name, avatar)
 	s.logger.Printf("Successfully joined gang: %s", gang.Name)
 
 	// Instead of redirecting to home, redirect to dashboard
@@ -282,9 +285,9 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 		validationErrors = append(validationErrors, "Host name is required")
 	}
 
-	formHostAvatar := r.FormValue("hostAvatar")
-	if formHostAvatar == "" {
-		s.logger.Println("Host avatar is required")
+	formAvatar := r.FormValue("avatar")
+	if formAvatar == "" {
+		s.logger.Println("Avatar is required")
 		validationErrors = append(validationErrors, "Host avatar is required")
 	}
 
@@ -293,7 +296,7 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 		s.logger.Println("Gang name is required")
 		validationErrors = append(validationErrors, "Gang name is required")
 	}
-	s.logger.Printf("Host action for host name: %s, avatar: %s, gang name: %s", formHostName, formHostAvatar, formGangName)
+	s.logger.Printf("Host action for host name: %s, avatar: %s, gang name: %s", formHostName, formAvatar, formGangName)
 
 	formGangEntryPassword := r.FormValue("gangEntryPassword")
 	if formGangEntryPassword == "" {
@@ -322,7 +325,7 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.userStore.CreateUser(ctx, db.CreateUserParams{
 		Name:       formHostName,
-		AvatarPath: pgtype.Text{String: formHostAvatar, Valid: true},
+		AvatarPath: pgtype.Text{String: formAvatar, Valid: true},
 	})
 	if err != nil {
 		s.logger.Printf("Error creating user: %v", err)
@@ -396,7 +399,26 @@ func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	// In a real app, you'd also fetch the user's data and any other necessary information
 
 	// For now, use stored session data for name and avatar
-	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, sessionData.Avatar), http.StatusOK, "Dashboard")
+	var avatar string
+	switch sessionData.Avatar {
+	case "cat":
+		avatar = "🐱"
+	case "dog":
+		avatar = "🐶"
+	case "dragon":
+		avatar = "🐉"
+	case "alien":
+		avatar = "👽"
+	case "robot":
+		avatar = "🤖"
+	case "ghost":
+		avatar = "👻"
+	case "wizard":
+		avatar = "🧙‍♂️"
+	default:
+		avatar = "👤"
+	}
+	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, avatar), http.StatusOK, "Dashboard")
 }
 
 func (s *server) logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -409,6 +431,7 @@ func (s *server) logoutHandler(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 	})
 
-	// Redirect to home
-	renderTemplate(w, r, templates.Home(), http.StatusOK, "Home")
+	// Redirect to home page
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+	s.logger.Println("User logged out successfully, session cookie cleared")
 }

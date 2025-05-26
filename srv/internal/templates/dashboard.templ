@@ -1,11 +1,11 @@
 package templates
 
-templ dashboardContents(gangName string, name string, userAvatar string) {
+templ dashboardContents(gangName string, name string, avatar string) {
 	<div class="space-y-6">
 		<div class="flex items-center justify-between">
 			<h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
 			<div class="flex items-center space-x-2">
-				<span class="text-2xl">{ userAvatar }</span>
+				<span class="text-2xl">{ avatar }</span>
 				<span class="font-medium text-gray-700 dark:text-gray-300">{ name }</span>
 			</div>
 		</div>
@@ -36,6 +36,6 @@ templ dashboardContents(gangName string, name string, userAvatar string) {
 	</div>
 }
 
-templ Dashboard(gangName string, name string, userAvatar string) {
-	@MainContent(dashboardContents(gangName, name, userAvatar))
+templ Dashboard(gangName string, name string, avatar string) {
+	@MainContent(dashboardContents(gangName, name, avatar))
 }
