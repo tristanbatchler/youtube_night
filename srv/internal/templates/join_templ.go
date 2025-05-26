@@ -85,7 +85,39 @@ func joinContents() templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h2 class=\"text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight\">Join a Game</h2><div id=\"validation-errors\"></div><form hx-post=\"/join\" hx-target=\"#main-content\" hx-target-422=\"#validation-errors\" hx-swap=\"outerHTML\" class=\"space-y-6\"><div class=\"text-left\"><label for=\"gangName\" class=\"input-label\">Gang</label><div class=\"text-left relative\"><input type=\"text\" id=\"gangName\" name=\"gangName\" autocomplete=\"off\" data-1p-ignore data-lpignore=\"true\" data-protonpass-ignore=\"true\" data-bw-ignore=\"true\" required placeholder=\"e.g. Tamriel Westside\" class=\"input-text\" hx-get=\"/gangs/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#gangs-list\" hx-params=\"gangName\" hx-swap=\"innerHTML\"><div id=\"gangs-list\" class=\"relative\"></div></div><label for=\"gangEntryPassword\" class=\"input-label mt-4\">Entry Password</label> <input type=\"password\" id=\"gangEntryPassword\" name=\"gangEntryPassword\" required placeholder=\"Enter the gang&#39;s entry password\" class=\"input-text\"></div><button type=\"submit\" class=\"btn-primary\">Join Game</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"btn-link\">← Back to Home</button>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h2 class=\"text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight\">Join a Game</h2><div id=\"validation-errors\"></div><form hx-post=\"/join\" hx-target=\"#main-content\" hx-target-422=\"#validation-errors\" hx-swap=\"outerHTML\" class=\"space-y-6\"><div class=\"text-left\"><label for=\"gangName\" class=\"input-label\">Gang</label><div class=\"text-left relative\"><input type=\"text\" id=\"gangName\" name=\"gangName\" autocomplete=\"off\" data-1p-ignore data-lpignore=\"true\" data-protonpass-ignore=\"true\" data-bw-ignore=\"true\" required placeholder=\"e.g. Tamriel Westside\" class=\"input-text\" hx-get=\"/gangs/search\" hx-trigger=\"keyup changed delay:200ms\" hx-target=\"#gangs-list\" hx-params=\"gangName\" hx-swap=\"innerHTML\"><div id=\"gangs-list\" class=\"relative\"></div></div><label for=\"name\" class=\"input-label mt-4\">Your Name</label> <input type=\"text\" id=\"name\" name=\"name\" required placeholder=\"Enter your name\" class=\"input-text\"> <label class=\"input-label mt-4\">Pick an Avatar</label><div class=\"flex flex-wrap gap-4\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = avatarOption("cat", "🐱", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = avatarOption("dog", "🐶", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = avatarOption("dragon", "🐲", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = avatarOption("alien", "👽", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = avatarOption("robot", "🤖", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = avatarOption("ghost", "👻", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = avatarOption("wizard", "🧙", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div><label for=\"gangEntryPassword\" class=\"input-label mt-4\">Entry Password</label> <input type=\"password\" id=\"gangEntryPassword\" name=\"gangEntryPassword\" required placeholder=\"Enter the gang&#39;s entry password\" class=\"input-text\"></div><button type=\"submit\" class=\"btn-primary\">Join Game</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"btn-link\">← Back to Home</button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

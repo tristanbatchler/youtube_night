@@ -16,12 +16,13 @@ import (
 )
 
 type config struct {
-	PgHost     string
-	PgPort     int
-	PgUser     string
-	PgPassword string
-	PgDatabase string
-	WebPort    int
+	PgHost       string
+	PgPort       int
+	PgUser       string
+	PgPassword   string
+	PgDatabase   string
+	WebPort      int
+	SessionToken []byte
 }
 
 func loadConfig() (*config, error) {
@@ -31,12 +32,17 @@ func loadConfig() (*config, error) {
 	}
 
 	cfg := &config{
-		PgHost:     os.Getenv("PG_HOST"),
-		PgPort:     5432, // Default PostgreSQL port
-		PgUser:     os.Getenv("PG_USER"),
-		PgPassword: os.Getenv("PG_PASSWORD"),
-		PgDatabase: os.Getenv("PG_DATABASE"),
-		WebPort:    9000, // Default web server port
+		PgHost:       os.Getenv("PG_HOST"),
+		PgPort:       5432, // Default PostgreSQL port
+		PgUser:       os.Getenv("PG_USER"),
+		PgPassword:   os.Getenv("PG_PASSWORD"),
+		PgDatabase:   os.Getenv("PG_DATABASE"),
+		WebPort:      9000, // Default web server port
+		SessionToken: []byte(os.Getenv("SESSION_TOKEN")),
+	}
+
+	if len(cfg.SessionToken) == 0 {
+		return nil, fmt.Errorf("SESSION_TOKEN environment variable is required")
 	}
 
 	if cfg.PgHost == "" || cfg.PgUser == "" || cfg.PgPassword == "" || cfg.PgDatabase == "" {
@@ -87,6 +93,8 @@ func main() {
 	}
 	logger.Println("Database schema generated successfully")
 
+	sessionStore := stores.NewSessionStore(cfg.SessionToken)
+
 	userStore, err := stores.NewUserStore(dbPool, logger)
 	if err != nil {
 		logger.Fatalf("Error creating user store: %v", err)
@@ -97,7 +105,7 @@ func main() {
 		logger.Fatalf("Error creating gang store: %v", err)
 	}
 
-	webServer, err := internal.NewWebServer(cfg.WebPort, logger, userStore, gangStore)
+	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore)
 	if err != nil {
 		logger.Fatalf("Error creating web server: %v", err)
 	}

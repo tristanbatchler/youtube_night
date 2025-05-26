@@ -52,6 +52,25 @@ templ joinContents() {
 				/>
 				<div id="gangs-list" class="relative"></div>
 			</div>
+			<label for="name" class="input-label mt-4">Your Name</label>
+			<input
+				type="text"
+				id="name"
+				name="name"
+				required
+				placeholder="Enter your name"
+				class="input-text"
+			/>
+			<label class="input-label mt-4">Pick an Avatar</label>
+			<div class="flex flex-wrap gap-4">
+				@avatarOption("cat", "🐱", true)
+				@avatarOption("dog", "🐶", false)
+				@avatarOption("dragon", "🐲", false)
+				@avatarOption("alien", "👽", false)
+				@avatarOption("robot", "🤖", false)
+				@avatarOption("ghost", "👻", false)
+				@avatarOption("wizard", "🧙", false)
+			</div>
 			<label for="gangEntryPassword" class="input-label mt-4">Entry Password</label>
 			<input
 				type="password"

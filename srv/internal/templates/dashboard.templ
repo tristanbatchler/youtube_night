@@ -1,0 +1,41 @@
+package templates
+
+templ dashboardContents(gangName string, name string, userAvatar string) {
+	<div class="space-y-6">
+		<div class="flex items-center justify-between">
+			<h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
+			<div class="flex items-center space-x-2">
+				<span class="text-2xl">{ userAvatar }</span>
+				<span class="font-medium text-gray-700 dark:text-gray-300">{ name }</span>
+			</div>
+		</div>
+		<div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+			<h2 class="text-xl font-semibold text-blue-700 dark:text-blue-300">Gang: { gangName }</h2>
+			<p class="mt-2 text-blue-600 dark:text-blue-200">
+				You've successfully joined this gang! Get ready for YouTube Night!
+			</p>
+		</div>
+		<div class="space-y-4">
+			<h3 class="text-lg font-medium text-gray-900 dark:text-white">Game Status</h3>
+			<div class="p-4 bg-white dark:bg-gray-700 rounded-lg shadow">
+				<p class="text-gray-700 dark:text-gray-300">
+					Waiting for the host to start the game...
+				</p>
+			</div>
+		</div>
+		<div class="mt-6 flex justify-end">
+			<button
+				hx-post="/logout"
+				hx-target="#main-content"
+				hx-swap="outerHTML"
+				class="text-sm text-red-600 hover:underline dark:text-red-400"
+			>
+				Leave Gang
+			</button>
+		</div>
+	</div>
+}
+
+templ Dashboard(gangName string, name string, userAvatar string) {
+	@MainContent(dashboardContents(gangName, name, userAvatar))
+}

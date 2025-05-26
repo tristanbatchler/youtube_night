@@ -32,12 +32,12 @@ func NewUserStore(dbPool *pgxpool.Pool, logger *log.Logger) (*UserStore, error) 
 }
 
 type UserAlreadyInGangError struct {
-	UserName string
+	Name     string
 	GangName string
 }
 
 func (e *UserAlreadyInGangError) Error() string {
-	return fmt.Sprintf("user '%s' is already in gang '%s'", e.UserName, e.GangName)
+	return fmt.Sprintf("user '%s' is already in gang '%s'", e.Name, e.GangName)
 }
 
 func (us *UserStore) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
@@ -78,7 +78,7 @@ func (us *UserStore) AssociateUserWithGang(ctx context.Context, user db.User, ga
 	for _, other := range others {
 		if other.Name == user.Name && other.AvatarPath == user.AvatarPath {
 			return &UserAlreadyInGangError{
-				UserName: user.Name,
+				Name:     user.Name,
 				GangName: gang.Name,
 			}
 		}
@@ -92,4 +92,12 @@ func (us *UserStore) AssociateUserWithGang(ctx context.Context, user db.User, ga
 		return fmt.Errorf("error associating user with gang: %w", err)
 	}
 	return nil
+}
+
+func (us *UserStore) GetUserById(ctx context.Context, userId int32) (db.User, error) {
+	user, err := us.queries.GetUserById(ctx, userId)
+	if err != nil {
+		return db.User{}, fmt.Errorf("error retrieving user by ID: %w", err)
+	}
+	return user, nil
 }

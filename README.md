@@ -46,6 +46,12 @@ GRANT CONNECT ON DATABASE youtube_night TO youtube_night;
 ALTER DATABASE youtube_night OWNER TO youtube_night;
 ```
 
+### Generate a session key
+Copy the output of the following command and use it as your session key in the `.env` file in the next step.
+```bash
+openssl rand -base64 32
+```
+
 ### Configuration
 Create a `.env` file in the `srv` directory with the following content:
 ```
@@ -55,6 +61,7 @@ PG_USER=youtube_night
 PG_PASSWORD=<your_secure_password>
 PG_DATABASE=youtube_night
 WEB_PORT=9000
+SESSION_KEY="<your_generated_session_key>"
 ```
 
 You should replace the placeholders (including the angle brackets) with your actual values. Everything else can probably be left as is, but you are welcome to change them if you know what you are doing.

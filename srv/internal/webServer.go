@@ -2,11 +2,13 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -23,16 +25,20 @@ import (
 const AppName = "YouTube Night"
 
 type server struct {
-	logger     *log.Logger
-	port       int
-	httpServer *http.Server
-	userStore  *stores.UserStore
-	gangStore  *stores.GangStore
+	logger       *log.Logger
+	port         int
+	httpServer   *http.Server
+	sessionStore *stores.SessionStore
+	userStore    *stores.UserStore
+	gangStore    *stores.GangStore
 }
 
-func NewWebServer(port int, logger *log.Logger, userStore *stores.UserStore, gangStore *stores.GangStore) (*server, error) {
+func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore) (*server, error) {
 	if logger == nil {
 		return nil, fmt.Errorf("logger cannot be nil")
+	}
+	if sessionStore == nil {
+		return nil, fmt.Errorf("sessionStore cannot be nil")
 	}
 	if userStore == nil {
 		return nil, fmt.Errorf("userStore cannot be nil")
@@ -42,10 +48,11 @@ func NewWebServer(port int, logger *log.Logger, userStore *stores.UserStore, gan
 	}
 
 	srv := &server{
-		logger:    logger,
-		port:      port,
-		userStore: userStore,
-		gangStore: gangStore,
+		logger:       logger,
+		port:         port,
+		sessionStore: sessionStore,
+		userStore:    userStore,
+		gangStore:    gangStore,
 	}
 	return srv, nil
 }
@@ -67,9 +74,13 @@ func (s *server) Start() error {
 	router.Handle("POST /join", loggingMiddleware(http.HandlerFunc(s.joinActionHandler)))
 	router.Handle("GET /host", loggingMiddleware(http.HandlerFunc(s.hostPageHandler)))
 	router.Handle("POST /host", loggingMiddleware(http.HandlerFunc(s.hostActionHandler)))
-
-	// Search gangs
 	router.Handle("GET /gangs/search", loggingMiddleware(http.HandlerFunc(s.searchGangsHandler)))
+
+	// Protected routes that require authentication
+	authMiddleware := middleware.Auth(s.logger, s.sessionStore, s.userStore, s.gangStore)
+	protectedMiddleware := middleware.Chain(middleware.Logging, middleware.ContentType, authMiddleware)
+	router.Handle("GET /dashboard", protectedMiddleware(http.HandlerFunc(s.dashboardHandler)))
+	router.Handle("POST /logout", loggingMiddleware(http.HandlerFunc(s.logoutHandler)))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
@@ -173,7 +184,7 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 			validationErrors = append(validationErrors, "Gang name is invalid")
 		default:
 			s.logger.Printf("Error retrieving gang: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Error(w, "Internal Server Error", http.StatusUnprocessableEntity)
 			return
 		}
 	}
@@ -192,7 +203,7 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 		validationErrors = append(validationErrors, "Gang entry password is incorrect")
 	} else if err != nil {
 		s.logger.Printf("Error comparing gang entry password: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error", http.StatusUnprocessableEntity)
 		return
 	}
 
@@ -204,11 +215,51 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	s.logger.Printf("Gang entry password is correct for gang: %s", gang.Name)
 
-	// Print a success message
+	// Create a new user for this session
+	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+
+	// Get name from form or generate default
+	name := r.FormValue("name")
+	if name == "" {
+		name = "Guest" + strconv.FormatInt(time.Now().Unix(), 10)
+	}
+
+	// Get avatar from form or use default
+	userAvatar := r.FormValue("userAvatar")
+	if userAvatar == "" {
+		userAvatar = "👤"
+	}
+
+	// Create the user
+	user, err := s.userStore.CreateUser(ctx, db.CreateUserParams{
+		Name:       name,
+		AvatarPath: pgtype.Text{String: userAvatar, Valid: true},
+	})
+	if err != nil {
+		s.logger.Printf("Error creating user: %v", err)
+		http.Error(w, "Error creating user", http.StatusInternalServerError)
+		return
+	}
+
+	// Associate the user with the gang
+	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	err = s.userStore.AssociateUserWithGang(ctx, user, gang)
+
+	var gangAlreadyExistsError *stores.UserAlreadyInGangError
+	if err != nil && !errors.As(err, &gangAlreadyExistsError) {
+		s.logger.Printf("Error associating user with gang: %v", err)
+		http.Error(w, "Error joining gang", http.StatusInternalServerError)
+		return
+	}
+
+	// Create a session for the user
+	middleware.CreateSessionCookie(w, user.ID, gang.ID, gang.Name, user.Name, userAvatar)
 	s.logger.Printf("Successfully joined gang: %s", gang.Name)
 
-	// Redirect back to the home page for now
-	renderTemplate(w, r, templates.Home(), http.StatusOK, "Home - Join Successful")
+	// Instead of redirecting to home, redirect to dashboard
+	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
 func (s *server) hostPageHandler(w http.ResponseWriter, r *http.Request) {
@@ -321,4 +372,43 @@ func (s *server) searchGangsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	s.logger.Printf("Found %d gangs matching query '%s'", len(gangs), query)
 	renderTemplate(w, r, templates.GangsList(gangs), http.StatusOK)
+}
+
+func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	// Fetch the latest gang and user data from the database
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+
+	gang, err := s.gangStore.GetGangById(ctx, int32(sessionData.GangId))
+	if err != nil {
+		s.logger.Printf("Error retrieving gang: %v", err)
+		http.Error(w, "Failed to load dashboard", http.StatusInternalServerError)
+		return
+	}
+
+	// In a real app, you'd also fetch the user's data and any other necessary information
+
+	// For now, use stored session data for name and avatar
+	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, sessionData.Avatar), http.StatusOK, "Dashboard")
+}
+
+func (s *server) logoutHandler(w http.ResponseWriter, r *http.Request) {
+	// Delete the session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.SessionCookieName,
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		HttpOnly: true,
+	})
+
+	// Redirect to home
+	renderTemplate(w, r, templates.Home(), http.StatusOK, "Home")
 }

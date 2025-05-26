@@ -17,7 +17,7 @@ var Logging Middleware = func(next http.Handler) http.Handler {
 }
 
 // For injecting the content type header
-func ContentType(next http.Handler) http.Handler {
+var ContentType Middleware = func(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		next.ServeHTTP(w, r)

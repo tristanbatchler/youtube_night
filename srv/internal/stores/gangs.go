@@ -130,3 +130,18 @@ func (gs *GangStore) GetGangByName(ctx context.Context, name string) (db.Gang, e
 	}
 	return gang, nil
 }
+
+func (gs *GangStore) GetGangById(ctx context.Context, id int32) (db.Gang, error) {
+	emptyGang := db.Gang{}
+
+	if id <= 0 {
+		return emptyGang, fmt.Errorf("invalid gang ID: %d", id)
+	}
+	gang, err := gs.queries.GetGangById(ctx, id)
+	if err == pgx.ErrNoRows {
+		return emptyGang, &ErrGangNotFound{GangName: fmt.Sprintf("ID %d", id)}
+	} else if err != nil {
+		return emptyGang, fmt.Errorf("error retrieving gang by ID: %w", err)
+	}
+	return gang, nil
+}
