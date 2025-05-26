@@ -17,6 +17,8 @@ import (
 	"github.com/tristanbatchler/youtube_night/srv/internal/middleware"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
 	"github.com/tristanbatchler/youtube_night/srv/internal/templates"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const AppName = "YouTube Night"
@@ -209,6 +211,20 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	s.logger.Printf("Host action for host name: %s, avatar: %s, gang name: %s", formHostName, formHostAvatar, formGangName)
 
+	formGangEntryPassword := r.FormValue("gangEntryPassword")
+	if formGangEntryPassword == "" {
+		s.logger.Println("Gang entry password is required")
+		http.Error(w, "Gang entry password is required", http.StatusBadRequest)
+		return
+	}
+
+	passwordHashBytes, err := bcrypt.GenerateFromPassword([]byte(formGangEntryPassword), bcrypt.DefaultCost)
+	if err != nil {
+		s.logger.Printf("Error hashing gang entry password: %v", err)
+		http.Error(w, "Error hashing gang entry password", http.StatusInternalServerError)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 
@@ -224,7 +240,7 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel = context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
-	gang, err := s.gangStore.CreateGang(ctx, formGangName, user.ID)
+	gang, err := s.gangStore.CreateGang(ctx, formGangName, user.ID, string(passwordHashBytes))
 	if err != nil {
 		s.logger.Printf("Error creating gang: %v", err)
 		http.Error(w, "Error creating gang", http.StatusInternalServerError)

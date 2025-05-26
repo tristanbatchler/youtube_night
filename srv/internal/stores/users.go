@@ -40,6 +40,15 @@ func (e *UserAlreadyExistsError) Error() string {
 	return fmt.Sprintf("user with username '%s' already exists", e.Username)
 }
 
+type UserAlreadyInGangError struct {
+	UserName string
+	GangName string
+}
+
+func (e *UserAlreadyInGangError) Error() string {
+	return fmt.Sprintf("user '%s' is already in gang '%s'", e.UserName, e.GangName)
+}
+
 func (us *UserStore) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
 	emptyUser := db.User{}
 
@@ -68,4 +77,30 @@ func (us *UserStore) GetUsers(ctx context.Context) ([]db.User, error) {
 		return nil, fmt.Errorf("error retrieving users: %w", err)
 	}
 	return users, nil
+}
+
+func (us *UserStore) AssociateUserWithGang(ctx context.Context, user db.User, gang db.Gang) error {
+	others, err := us.queries.GetUsersInGang(ctx, gang.ID)
+	if err != nil {
+		return fmt.Errorf("error retrieving users in gang: %w", err)
+	}
+
+	// Make sure only one user with a certain name and avatar is in this gang
+	for _, other := range others {
+		if other.Name == user.Name && other.AvatarPath == user.AvatarPath {
+			return &UserAlreadyInGangError{
+				UserName: user.Name,
+				GangName: gang.Name,
+			}
+		}
+	}
+
+	err = us.queries.AssociateUserWithGang(ctx, db.AssociateUserWithGangParams{
+		UserID: user.ID,
+		GangID: gang.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("error associating user with gang: %w", err)
+	}
+	return nil
 }

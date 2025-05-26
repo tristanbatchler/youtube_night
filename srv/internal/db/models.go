@@ -9,9 +9,10 @@ import (
 )
 
 type Gang struct {
-	ID        int32
-	Name      string
-	CreatedAt pgtype.Timestamptz
+	ID                int32
+	Name              string
+	EntryPasswordHash string
+	CreatedAt         pgtype.Timestamptz
 }
 
 type User struct {

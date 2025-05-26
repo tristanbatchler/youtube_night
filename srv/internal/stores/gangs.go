@@ -30,7 +30,7 @@ func NewGangStore(dbPool *pgxpool.Pool, logger *log.Logger) (*GangStore, error) 
 	}, nil
 }
 
-func (gs *GangStore) CreateGang(ctx context.Context, name string, hostUserId int32) (db.Gang, error) {
+func (gs *GangStore) CreateGang(ctx context.Context, name string, hostUserId int32, entryPasswordHash string) (db.Gang, error) {
 	emptyGang := db.Gang{}
 
 	if name == "" {
@@ -46,7 +46,10 @@ func (gs *GangStore) CreateGang(ctx context.Context, name string, hostUserId int
 	defer tx.Rollback(ctx)
 
 	qtx := gs.queries.WithTx(tx)
-	gang, err := qtx.CreateGang(ctx, name)
+	gang, err := qtx.CreateGang(ctx, db.CreateGangParams{
+		Name:              name,
+		EntryPasswordHash: entryPasswordHash,
+	})
 	if err != nil {
 		return emptyGang, fmt.Errorf("error creating gang: %w", err)
 	}

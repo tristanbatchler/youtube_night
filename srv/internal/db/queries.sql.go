@@ -32,17 +32,27 @@ func (q *Queries) AssociateUserWithGang(ctx context.Context, arg AssociateUserWi
 
 const createGang = `-- name: CreateGang :one
 INSERT INTO gangs (
-    name
+    name, entry_password_hash
 ) VALUES (
-    $1
+    $1, $2
 )
-RETURNING id, name, created_at
+RETURNING id, name, entry_password_hash, created_at
 `
 
-func (q *Queries) CreateGang(ctx context.Context, name string) (Gang, error) {
-	row := q.db.QueryRow(ctx, createGang, name)
+type CreateGangParams struct {
+	Name              string
+	EntryPasswordHash string
+}
+
+func (q *Queries) CreateGang(ctx context.Context, arg CreateGangParams) (Gang, error) {
+	row := q.db.QueryRow(ctx, createGang, arg.Name, arg.EntryPasswordHash)
 	var i Gang
-	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.EntryPasswordHash,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
@@ -73,8 +83,25 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getGangById = `-- name: GetGangById :one
+SELECT id, name, entry_password_hash, created_at FROM gangs
+WHERE id = $1
+`
+
+func (q *Queries) GetGangById(ctx context.Context, id int32) (Gang, error) {
+	row := q.db.QueryRow(ctx, getGangById, id)
+	var i Gang
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.EntryPasswordHash,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getGangs = `-- name: GetGangs :many
-SELECT id, name, created_at FROM gangs
+SELECT id, name, entry_password_hash, created_at FROM gangs
 ORDER BY name
 `
 
@@ -87,7 +114,12 @@ func (q *Queries) GetGangs(ctx context.Context) ([]Gang, error) {
 	var items []Gang
 	for rows.Next() {
 		var i Gang
-		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.EntryPasswordHash,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -98,6 +130,24 @@ func (q *Queries) GetGangs(ctx context.Context) ([]Gang, error) {
 	return items, nil
 }
 
+const getUserById = `-- name: GetUserById :one
+SELECT id, name, avatar_path, created_at, last_login FROM users
+WHERE id = $1
+`
+
+func (q *Queries) GetUserById(ctx context.Context, id int32) (User, error) {
+	row := q.db.QueryRow(ctx, getUserById, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.AvatarPath,
+		&i.CreatedAt,
+		&i.LastLogin,
+	)
+	return i, err
+}
+
 const getUsers = `-- name: GetUsers :many
 SELECT id, name, avatar_path, created_at, last_login FROM users
 ORDER BY name
@@ -105,6 +155,39 @@ ORDER BY name
 
 func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 	rows, err := q.db.Query(ctx, getUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.AvatarPath,
+			&i.CreatedAt,
+			&i.LastLogin,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUsersInGang = `-- name: GetUsersInGang :many
+SELECT u.id, u.name, u.avatar_path, u.created_at, u.last_login FROM users u
+JOIN users_gangs ug ON u.id = ug.user_id
+WHERE ug.gang_id = $1
+ORDER BY u.name
+`
+
+func (q *Queries) GetUsersInGang(ctx context.Context, gangID int32) ([]User, error) {
+	rows, err := q.db.Query(ctx, getUsersInGang, gangID)
 	if err != nil {
 		return nil, err
 	}
