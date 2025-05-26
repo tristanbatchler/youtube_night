@@ -7,23 +7,27 @@ import (
 	"strings"
 
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 )
 
 type UserStore struct {
+	dbPool  *pgxpool.Pool
 	queries *db.Queries
 	logger  *log.Logger
 }
 
-func NewUserStore(queries *db.Queries, logger *log.Logger) (*UserStore, error) {
-	if queries == nil {
-		return nil, fmt.Errorf("queries cannot be nil")
+func NewUserStore(dbPool *pgxpool.Pool, logger *log.Logger) (*UserStore, error) {
+	if dbPool == nil {
+		return nil, fmt.Errorf("dbPool cannot be nil")
 	}
 	if logger == nil {
 		return nil, fmt.Errorf("logger cannot be nil")
 	}
 	return &UserStore{
-		queries: queries,
+		dbPool:  dbPool,
+		queries: db.New(dbPool),
 		logger:  logger,
 	}, nil
 }
@@ -39,15 +43,21 @@ func (e *UserAlreadyExistsError) Error() string {
 func (us *UserStore) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
 	emptyUser := db.User{}
 
-	if params.Username == "" {
-		return emptyUser, fmt.Errorf("username cannot be empty")
+	if params.Name == "" {
+		return emptyUser, fmt.Errorf("name cannot be empty")
 	}
 
-	params.Username = strings.TrimSpace(strings.ToLower(params.Username))
+	if !params.AvatarPath.Valid {
+		params.AvatarPath = pgtype.Text{String: "cat", Valid: true}
+	}
+
+	params.Name = strings.TrimSpace(params.Name)
 
 	user, err := us.queries.CreateUser(ctx, params)
 	if db.ErrorHasCode(err, pgerrcode.UniqueViolation) {
-		return emptyUser, &UserAlreadyExistsError{Username: params.Username}
+		return emptyUser, &UserAlreadyExistsError{Username: params.Name}
+	} else if err != nil {
+		return emptyUser, fmt.Errorf("error creating user: %w", err)
 	}
 	return user, nil
 }

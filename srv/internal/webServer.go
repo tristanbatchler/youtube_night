@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"github.com/tristanbatchler/youtube_night/srv/internal/middleware"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
@@ -25,17 +26,25 @@ type server struct {
 	port       int
 	httpServer *http.Server
 	userStore  *stores.UserStore
+	gangStore  *stores.GangStore
 }
 
-func NewWebServer(port int, logger *log.Logger, userStore *stores.UserStore) (*server, error) {
+func NewWebServer(port int, logger *log.Logger, userStore *stores.UserStore, gangStore *stores.GangStore) (*server, error) {
 	if logger == nil {
 		return nil, fmt.Errorf("logger cannot be nil")
+	}
+	if userStore == nil {
+		return nil, fmt.Errorf("userStore cannot be nil")
+	}
+	if gangStore == nil {
+		return nil, fmt.Errorf("gangStore cannot be nil")
 	}
 
 	srv := &server{
 		logger:    logger,
 		port:      port,
 		userStore: userStore,
+		gangStore: gangStore,
 	}
 	return srv, nil
 }
@@ -46,8 +55,8 @@ func (s *server) Start() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	user, err := s.userStore.CreateUser(ctx, db.CreateUserParams{
-		Username:     "admin",
-		PasswordHash: "123",
+		Name:       "admin",
+		AvatarPath: pgtype.Text{String: "dog", Valid: true},
 	})
 	var alreadyExistsErr *stores.UserAlreadyExistsError
 	if err != nil && !errors.As(err, &alreadyExistsErr) {
@@ -177,13 +186,50 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	formGroupName := r.FormValue("groupName")
-	if formGroupName == "" {
-		s.logger.Println("Group name is required")
-		http.Error(w, "Group name is required", http.StatusBadRequest)
+
+	formHostName := r.FormValue("hostName")
+	if formHostName == "" {
+		s.logger.Println("Host name is required")
+		http.Error(w, "Host name is required", http.StatusBadRequest)
 		return
 	}
-	s.logger.Printf("Host action for group name: %s", formGroupName)
-	// Here you would handle the host action, e.g., creating a new group. For now, just log it and redirect back to home.
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+
+	formHostAvatar := r.FormValue("hostAvatar")
+	if formHostAvatar == "" {
+		s.logger.Println("Host avatar is required")
+		http.Error(w, "Host avatar is required", http.StatusBadRequest)
+		return
+	}
+
+	formGangName := r.FormValue("gangName")
+	if formGangName == "" {
+		s.logger.Println("Gang name is required")
+		http.Error(w, "Gang name is required", http.StatusBadRequest)
+		return
+	}
+	s.logger.Printf("Host action for host name: %s, avatar: %s, gang name: %s", formHostName, formHostAvatar, formGangName)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
+	user, err := s.userStore.CreateUser(ctx, db.CreateUserParams{
+		Name:       formHostName,
+		AvatarPath: pgtype.Text{String: formHostAvatar, Valid: true},
+	})
+	if err != nil {
+		s.logger.Printf("Error creating user: %v", err)
+		http.Error(w, "Error creating host user", http.StatusInternalServerError)
+		return
+	}
+
+	ctx, cancel = context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	gang, err := s.gangStore.CreateGang(ctx, formGangName, user.ID)
+	if err != nil {
+		s.logger.Printf("Error creating gang: %v", err)
+		http.Error(w, "Error creating gang", http.StatusInternalServerError)
+		return
+	}
+	s.logger.Printf("Host action successful: user %v created and gang %v created", user, gang)
+	renderTemplate(w, r, templates.Home(), "Home - Host Successful")
 }

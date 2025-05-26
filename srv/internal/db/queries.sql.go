@@ -7,38 +7,100 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const associateUserWithGang = `-- name: AssociateUserWithGang :exec
+INSERT INTO users_gangs (
+    user_id, gang_id, isHost
+) VALUES (
+    $1, $2, $3
+)
+`
+
+type AssociateUserWithGangParams struct {
+	UserID int32
+	GangID int32
+	Ishost pgtype.Bool
+}
+
+func (q *Queries) AssociateUserWithGang(ctx context.Context, arg AssociateUserWithGangParams) error {
+	_, err := q.db.Exec(ctx, associateUserWithGang, arg.UserID, arg.GangID, arg.Ishost)
+	return err
+}
+
+const createGang = `-- name: CreateGang :one
+INSERT INTO gangs (
+    name
+) VALUES (
+    $1
+)
+RETURNING id, name, created_at
+`
+
+func (q *Queries) CreateGang(ctx context.Context, name string) (Gang, error) {
+	row := q.db.QueryRow(ctx, createGang, name)
+	var i Gang
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-    username, password_hash, created_at
+    name, avatar_path
 ) VALUES (
-    $1, $2, CURRENT_TIMESTAMP
+    $1, $2
 )
-RETURNING id, username, password_hash, created_at, last_login
+RETURNING id, name, avatar_path, created_at, last_login
 `
 
 type CreateUserParams struct {
-	Username     string
-	PasswordHash string
+	Name       string
+	AvatarPath pgtype.Text
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createUser, arg.Name, arg.AvatarPath)
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Username,
-		&i.PasswordHash,
+		&i.Name,
+		&i.AvatarPath,
 		&i.CreatedAt,
 		&i.LastLogin,
 	)
 	return i, err
 }
 
+const getGangs = `-- name: GetGangs :many
+SELECT id, name, created_at FROM gangs
+ORDER BY name
+`
+
+func (q *Queries) GetGangs(ctx context.Context) ([]Gang, error) {
+	rows, err := q.db.Query(ctx, getGangs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Gang
+	for rows.Next() {
+		var i Gang
+		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUsers = `-- name: GetUsers :many
-SELECT id, username, password_hash, created_at, last_login FROM users
-ORDER BY created_at DESC
+SELECT id, name, avatar_path, created_at, last_login FROM users
+ORDER BY name
 `
 
 func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
@@ -52,8 +114,8 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 		var i User
 		if err := rows.Scan(
 			&i.ID,
-			&i.Username,
-			&i.PasswordHash,
+			&i.Name,
+			&i.AvatarPath,
 			&i.CreatedAt,
 			&i.LastLogin,
 		); err != nil {

@@ -87,12 +87,17 @@ func main() {
 	}
 	logger.Println("Database schema generated successfully")
 
-	userStore, err := stores.NewUserStore(db.New(dbPool), logger)
+	userStore, err := stores.NewUserStore(dbPool, logger)
 	if err != nil {
 		logger.Fatalf("Error creating user store: %v", err)
 	}
 
-	webServer, err := internal.NewWebServer(cfg.WebPort, logger, userStore)
+	gangStore, err := stores.NewGangStore(dbPool, logger)
+	if err != nil {
+		logger.Fatalf("Error creating gang store: %v", err)
+	}
+
+	webServer, err := internal.NewWebServer(cfg.WebPort, logger, userStore, gangStore)
 	if err != nil {
 		logger.Fatalf("Error creating web server: %v", err)
 	}

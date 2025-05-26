@@ -60,7 +60,8 @@ WEB_PORT=9000
 You should replace the placeholders (including the angle brackets) with your actual values. Everything else can probably be left as is, but you are welcome to change them if you know what you are doing.
 
 ## ToDo
- - [ ] Add favicons
+ - [x] Add favicons
+ - [ ] Make stores struct to tidy up dependency injection
  - [ ] Design the page and functionality
  - [ ] Implement the page and functionality
  - [ ] Add tests

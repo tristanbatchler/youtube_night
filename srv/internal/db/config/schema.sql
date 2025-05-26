@@ -1,8 +1,21 @@
--- PostgreSQL schema for the users table
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
-    username TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
+    avatar_path TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMPTZ DEFAULT NULL
 );
+
+CREATE TABLE IF NOT EXISTS gangs (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS users_gangs (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    gang_id INTEGER NOT NULL REFERENCES gangs(id) ON DELETE CASCADE,
+    isHost BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (user_id, gang_id)
+);
+

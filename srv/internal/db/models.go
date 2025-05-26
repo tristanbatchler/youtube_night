@@ -8,10 +8,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Gang struct {
+	ID        int32
+	Name      string
+	CreatedAt pgtype.Timestamptz
+}
+
 type User struct {
-	ID           int32
-	Username     string
-	PasswordHash string
-	CreatedAt    pgtype.Timestamptz
-	LastLogin    pgtype.Timestamptz
+	ID         int32
+	Name       string
+	AvatarPath pgtype.Text
+	CreatedAt  pgtype.Timestamptz
+	LastLogin  pgtype.Timestamptz
+}
+
+type UsersGang struct {
+	UserID int32
+	GangID int32
+	Ishost pgtype.Bool
 }
