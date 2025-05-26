@@ -97,7 +97,7 @@ func hostContents() templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h2 class=\"text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight\">Host a Game</h2><form hx-post=\"/host\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"space-y-6\"><div class=\"text-left\"><label for=\"hostName\" class=\"block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300\">Your Name</label> <input type=\"text\" id=\"hostName\" name=\"hostName\" required placeholder=\"e.g. Sotha Sil\" class=\"w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500\"></div><div class=\"text-left\"><label class=\"block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300\">Pick an Avatar</label><div class=\"flex flex-wrap gap-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h2 class=\"text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight\">Host a Game</h2><form hx-post=\"/host\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"space-y-6\"><div class=\"text-left\"><label for=\"hostName\" class=\"input-label\">Your Name</label> <input type=\"text\" id=\"hostName\" name=\"hostName\" required placeholder=\"e.g. Sotha Sil\" class=\"input-text\"></div><div class=\"text-left\"><label class=\"input-label\">Pick an Avatar</label><div class=\"flex flex-wrap gap-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -129,7 +129,7 @@ func hostContents() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div></div><div class=\"text-left\"><label for=\"gangName\" class=\"block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300\">Gang Name</label> <input type=\"text\" id=\"gangName\" name=\"gangName\" required placeholder=\"e.g. Tamriel Westside\" class=\"w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500\"></div><button type=\"submit\" class=\"w-full py-3 px-6 text-lg font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition\">Start Hosting</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"mt-6 text-sm text-blue-600 hover:underline dark:text-blue-300\">← Back to Home</button>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div></div><div class=\"text-left\"><label for=\"gangName\" class=\"input-label\">Gang Name</label> <input type=\"text\" id=\"gangName\" name=\"gangName\" required placeholder=\"e.g. Tamriel Westside\" class=\"input-text\"></div><button type=\"submit\" class=\"btn-primary\">Start Hosting</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"mt-6 text-sm text-blue-600 hover:underline dark:text-blue-300\">← Back to Home</button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

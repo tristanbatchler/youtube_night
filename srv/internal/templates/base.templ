@@ -38,7 +38,7 @@ templ themeToggle() {
 		<div class="flex space-x-2">
 			<button
 				onclick="window.setTheme('light')"
-				class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+				class="btn-secondary"
 				title="Light Mode"
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sun-fill h-5 w-5 text-yellow-500" viewBox="0 0 16 16">
@@ -47,7 +47,7 @@ templ themeToggle() {
 			</button>
 			<button
 				onclick="window.setTheme('system')"
-				class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+				class="btn-secondary"
 				title="System Preference"
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-circle-half h-5 w-5 text-gray-500" viewBox="0 0 16 16">
@@ -56,7 +56,7 @@ templ themeToggle() {
 			</button>
 			<button
 				onclick="window.setTheme('dark')"
-				class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+				class="btn-secondary"
 				title="Dark Mode"
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-moon-stars-fill h-5 w-5 text-indigo-500" viewBox="0 0 16 16">
@@ -82,7 +82,7 @@ templ Layout(contents templ.Component, title string) {
 }
 
 templ MainContent(contents templ.Component) {
-	<div id="main-content" class="max-w-xl w-full px-6 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl text-center">
+	<div id="main-content" class="card">
 		@contents
 	</div>
 }

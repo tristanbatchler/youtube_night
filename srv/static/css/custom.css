@@ -1,2 +1,27 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Primary action button */
+.btn-primary {
+    @apply w-full py-3 px-6 text-lg font-medium rounded-xl text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition;
+}
+
+/* Secondary action button */
+.btn-secondary {
+    @apply p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600;
+}
+
+/* Input fields */
+.input-text {
+    @apply w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+/* Input labels */
+.input-label {
+    @apply block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300
+}
+
+/* Card/container */
+.card {
+    @apply max-w-xl w-full px-6 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl text-center;
+}
