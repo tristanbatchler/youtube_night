@@ -27,7 +27,7 @@
 
 /* Card/container */
 .card {
-    @apply max-w-xl w-full px-6 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl text-center;
+    @apply max-w-2xl w-full px-6 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl text-center;
 }
 
 .avatar-option {

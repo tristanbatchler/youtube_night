@@ -10,17 +10,19 @@ templ youtubeSummary(video *youtube.Video) {
 		href={ templ.SafeURL(fmt.Sprintf("https://www.youtube.com/watch?v=%s", video.Id)) }
 		target="_blank"
 		rel="noopener noreferrer"
-		class="block hover:bg-gray-50 dark:hover:bg-gray-800 transition rounded-lg overflow-hidden"
+		class="block hover:bg-gray-50 dark:hover:bg-gray-800 transition rounded-lg overflow-hidden mb-4"
 	>
-		<div class="flex items-center space-x-4 p-2">
-			<img
-				src={ fmt.Sprintf("%s", video.Snippet.Thumbnails.Default.Url) }
-				alt="Video Thumbnail"
-				class="w-32 h-32 rounded-lg shadow-md"
-			/>
-			<div class="flex-1 text-left">
+		<div class="flex flex-col md:flex-row md:space-x-4 p-3">
+			<div class="w-full md:w-48 flex-shrink-0 mb-3 md:mb-0">
+				<img
+					src={ fmt.Sprintf("%s", video.Snippet.Thumbnails.Maxres.Url) }
+					alt="Video Thumbnail"
+					class="w-full h-auto rounded-lg shadow-md"
+				/>
+			</div>
+			<div class="text-left">
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white">{ video.Snippet.Title }</h3>
-				<p class="text-gray-700 dark:text-gray-300 line-clamp-3">
+				<p class="text-gray-700 dark:text-gray-300 line-clamp-3 mt-2">
 					{ video.Snippet.Description }
 				</p>
 			</div>
