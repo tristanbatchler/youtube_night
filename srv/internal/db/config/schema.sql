@@ -20,3 +20,19 @@ CREATE TABLE IF NOT EXISTS users_gangs (
     PRIMARY KEY (user_id, gang_id)
 );
 
+CREATE TABLE IF NOT EXISTS videos (
+    video_id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT DEFAULT NULL,
+    thumbnail_url TEXT DEFAULT NULL,
+    channel_name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS video_submissions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    gang_id INTEGER NOT NULL REFERENCES gangs(id) ON DELETE CASCADE,
+    video_id TEXT NOT NULL REFERENCES videos(video_id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, gang_id, video_id)
+);

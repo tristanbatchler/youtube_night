@@ -27,16 +27,17 @@ import (
 const AppName = "YouTube Night"
 
 type server struct {
-	logger         *log.Logger
-	port           int
-	httpServer     *http.Server
-	sessionStore   *stores.SessionStore
-	userStore      *stores.UserStore
-	gangStore      *stores.GangStore
-	youtubeService *youtube.Service
+	logger               *log.Logger
+	port                 int
+	httpServer           *http.Server
+	sessionStore         *stores.SessionStore
+	userStore            *stores.UserStore
+	gangStore            *stores.GangStore
+	videoSubmissionStore *stores.VideoSubmissionStore
+	youtubeService       *youtube.Service
 }
 
-func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore, youtubeService *youtube.Service) (*server, error) {
+func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore, videoSubmissionStore *stores.VideoSubmissionStore, youtubeService *youtube.Service) (*server, error) {
 	if logger == nil {
 		return nil, fmt.Errorf("logger cannot be nil")
 	}
@@ -49,14 +50,21 @@ func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStor
 	if gangStore == nil {
 		return nil, fmt.Errorf("gangStore cannot be nil")
 	}
+	if videoSubmissionStore == nil {
+		return nil, fmt.Errorf("videoSubmissionStore cannot be nil")
+	}
+	if youtubeService == nil {
+		return nil, fmt.Errorf("youtubeService cannot be nil")
+	}
 
 	srv := &server{
-		logger:         logger,
-		port:           port,
-		sessionStore:   sessionStore,
-		userStore:      userStore,
-		gangStore:      gangStore,
-		youtubeService: youtubeService,
+		logger:               logger,
+		port:                 port,
+		sessionStore:         sessionStore,
+		userStore:            userStore,
+		gangStore:            gangStore,
+		videoSubmissionStore: videoSubmissionStore,
+		youtubeService:       youtubeService,
 	}
 	return srv, nil
 }
@@ -82,15 +90,17 @@ func (s *server) Start() error {
 	router.Handle("GET /join", publicMiddleware(http.HandlerFunc(s.joinPageHandler)))
 	router.Handle("POST /join", publicMiddleware(http.HandlerFunc(s.joinActionHandler)))
 	router.Handle("GET /host", publicMiddleware(http.HandlerFunc(s.hostPageHandler)))
-	router.Handle("POST /host", loggingMiddleware(http.HandlerFunc(s.hostActionHandler)))
-	router.Handle("GET /gangs/search", loggingMiddleware(http.HandlerFunc(s.searchGangsHandler)))
+	router.Handle("POST /host", publicMiddleware(http.HandlerFunc(s.hostActionHandler)))
+	router.Handle("GET /gangs/search", publicMiddleware(http.HandlerFunc(s.searchGangsHandler)))
 
 	// Protected routes that require authentication
 	authMiddleware := middleware.Auth(s.logger, s.sessionStore, s.userStore, s.gangStore)
 	protectedMiddleware := middleware.Chain(middleware.Logging, middleware.ContentType, authMiddleware)
 	router.Handle("GET /dashboard", protectedMiddleware(http.HandlerFunc(s.dashboardHandler)))
-	router.Handle("POST /logout", loggingMiddleware(http.HandlerFunc(s.logoutHandler)))
-	router.Handle("GET /logout", loggingMiddleware(http.HandlerFunc(s.logoutHandler)))
+	router.Handle("POST /logout", protectedMiddleware(http.HandlerFunc(s.logoutHandler)))
+	router.Handle("GET /logout", protectedMiddleware(http.HandlerFunc(s.logoutHandler)))
+	router.Handle("GET /videos/search", protectedMiddleware(http.HandlerFunc(s.searchVideosHandler)))
+	router.Handle("POST /videos/submit", protectedMiddleware(http.HandlerFunc(s.submitVideoHandler)))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
@@ -404,29 +414,19 @@ func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
 
-	gang, err := s.gangStore.GetGangById(ctx, int32(sessionData.GangId))
+	gang, err := s.gangStore.GetGangById(ctx, sessionData.GangId)
 	if err != nil {
 		s.logger.Printf("Error retrieving gang: %v", err)
 		http.Error(w, "Failed to load dashboard", http.StatusInternalServerError)
 		return
 	}
 
-	// Let's load some dumb videos' details for now. Pass the videos' details to the template to render
-	videoIds := []string{"i0SWjCOlG-8", "8wWpMR5mo-w", "nnqZdqljjXU"}
-	videoDetails := make([]*youtube.Video, 0, len(videoIds))
-
-	for _, videoId := range videoIds {
-		videoList, err := s.youtubeService.Videos.List([]string{"snippet"}).Id(videoId).Do()
-		if err != nil {
-			s.logger.Printf("Error fetching video details: %v", err)
-			continue
-		}
-		if len(videoList.Items) == 0 {
-			s.logger.Printf("No video found with ID: %s", videoId)
-			continue
-		}
-
-		videoDetails = append(videoDetails, videoList.Items[0])
+	// Let's load the videos submitted by the gang
+	videoList, err := s.videoSubmissionStore.GetVideosSubmittedByGangId(ctx, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error fetching video details: %v", err)
+		http.Error(w, "Failed to load video details", http.StatusInternalServerError)
+		return
 	}
 
 	// For now, use stored session data for name and avatar
@@ -449,7 +449,7 @@ func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		avatar = "👤"
 	}
-	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, avatar, videoDetails), http.StatusOK, "Dashboard")
+	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, avatar, videoList), http.StatusOK, "Dashboard")
 }
 
 func (s *server) logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -465,4 +465,64 @@ func (s *server) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	// Redirect to home page
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 	s.logger.Println("User logged out successfully, session cookie cleared")
+}
+
+func (s *server) searchVideosHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		http.Error(w, "Search query parameter q is required", http.StatusBadRequest)
+		return
+	}
+
+	s.logger.Printf("Searching YouTube videos with query: %s", query)
+
+	// Set up the search call
+	call := s.youtubeService.Search.List([]string{"snippet"}).
+		Q(query).
+		MaxResults(5).
+		Type("video")
+
+	// Execute the search
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	response, err := call.Context(ctx).Do()
+	if err != nil {
+		s.logger.Printf("YouTube search error: %v", err)
+		http.Error(w, "Error searching YouTube", http.StatusInternalServerError)
+		return
+	}
+
+	// Render the search results
+	renderTemplate(w, r, templates.VideoSearchResults(response.Items), http.StatusOK)
+}
+
+func (s *server) submitVideoHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the video ID
+	videoId := r.URL.Query().Get("videoId")
+	if videoId == "" {
+		http.Error(w, "Video ID is required", http.StatusBadRequest)
+		return
+	}
+	s.logger.Printf("Submitting video with ID: %s", videoId)
+
+	// Get the session data
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get the userId and gangId from the session
+	userId := sessionData.UserId
+	gangId := sessionData.GangId
+
+	// Add the video submission to the store
+	_, err := s.videoSubmissionStore.SubmitVideo(r.Context(), videoId, userId, gangId)
+	if err != nil {
+		s.logger.Printf("Error submitting video: %v", err)
+		http.Error(w, "Error submitting video", http.StatusInternalServerError)
+		return
+	}
+	s.dashboardHandler(w, r) // Redirect to dashboard after submission
 }

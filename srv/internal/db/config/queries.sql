@@ -52,3 +52,30 @@ LIMIT 10;
 -- name: GetGangByName :one
 SELECT * FROM gangs
 WHERE name = $1;
+
+-- name: CreateVideo :one
+INSERT INTO videos (
+    video_id, title, description, thumbnail_url, channel_name
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+RETURNING *;
+
+-- name: GetVideoByVideoId :one
+SELECT * FROM videos
+WHERE video_id = $1;
+
+-- name: CreateVideoSubmission :one
+INSERT INTO video_submissions (
+    user_id, gang_id, video_id
+) VALUES (
+    $1, $2, $3
+)
+RETURNING *;
+
+-- name: GetVideosSubmittedByGangId :many
+SELECT vs.*, v.title, v.description, v.thumbnail_url, v.channel_name
+FROM video_submissions vs
+JOIN videos v ON vs.video_id = v.video_id
+WHERE vs.gang_id = $1
+ORDER BY vs.created_at DESC;

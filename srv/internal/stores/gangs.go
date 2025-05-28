@@ -45,7 +45,7 @@ func (e *ErrGangNameAlreadyExists) Error() string {
 
 func NewGangStore(dbPool *pgxpool.Pool, logger *log.Logger) (*GangStore, error) {
 	if dbPool == nil {
-		return nil, fmt.Errorf("dbTx cannot be nil")
+		return nil, fmt.Errorf("dbPool cannot be nil")
 	}
 	if logger == nil {
 		return nil, fmt.Errorf("logger cannot be nil")

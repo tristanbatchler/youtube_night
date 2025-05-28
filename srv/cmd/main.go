@@ -119,7 +119,12 @@ func main() {
 		logger.Fatalf("Error creating gang store: %v", err)
 	}
 
-	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore, youtubeService)
+	videoSubmissionStore, err := stores.NewVideoSubmissionStore(youtubeService, dbPool, logger)
+	if err != nil {
+		logger.Fatalf("Error creating video submission store: %v", err)
+	}
+
+	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore, videoSubmissionStore, youtubeService)
 	if err != nil {
 		logger.Fatalf("Error creating web server: %v", err)
 	}

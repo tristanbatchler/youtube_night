@@ -28,3 +28,19 @@ type UsersGang struct {
 	GangID int32
 	Ishost pgtype.Bool
 }
+
+type Video struct {
+	VideoID      string
+	Title        string
+	Description  pgtype.Text
+	ThumbnailUrl pgtype.Text
+	ChannelName  string
+}
+
+type VideoSubmission struct {
+	ID        int32
+	UserID    int32
+	GangID    int32
+	VideoID   string
+	CreatedAt pgtype.Timestamptz
+}

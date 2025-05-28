@@ -2,35 +2,122 @@ package templates
 
 import (
 	"fmt"
+	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"google.golang.org/api/youtube/v3"
 )
 
-templ youtubeSummary(video *youtube.Video) {
+templ youtubeSummary(video db.Video) {
 	<a
-		href={ templ.SafeURL(fmt.Sprintf("https://www.youtube.com/watch?v=%s", video.Id)) }
+		href={ templ.SafeURL(fmt.Sprintf("https://www.youtube.com/watch?v=%s", video.VideoID)) }
 		target="_blank"
 		rel="noopener noreferrer"
 		class="block hover:bg-gray-50 dark:hover:bg-gray-800 transition rounded-lg overflow-hidden mb-4"
 	>
 		<div class="flex flex-col md:flex-row md:space-x-4 p-3">
-			<div class="w-full md:w-48 flex-shrink-0 mb-3 md:mb-0">
-				<img
-					src={ fmt.Sprintf("%s", video.Snippet.Thumbnails.Maxres.Url) }
-					alt="Video Thumbnail"
-					class="w-full h-auto rounded-lg shadow-md"
-				/>
-			</div>
+			if video.ThumbnailUrl.Valid {
+				<div class="w-full md:w-48 flex-shrink-0 mb-3 md:mb-0">
+					<img
+						src={ fmt.Sprintf("%s", video.ThumbnailUrl.String) }
+						alt="Video Thumbnail"
+						class="w-full h-auto rounded-lg shadow-md"
+					/>
+				</div>
+			}
 			<div class="text-left">
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white">{ video.Snippet.Title }</h3>
-				<p class="text-gray-700 dark:text-gray-300 line-clamp-3 mt-2">
-					{ video.Snippet.Description }
-				</p>
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-white">{ video.Title }</h3>
+				if video.Description.Valid {
+					<p class="text-gray-700 dark:text-gray-300 line-clamp-3 mt-2">
+						{ video.Description.String }
+					</p>
+				}
 			</div>
 		</div>
 	</a>
 }
 
-templ dashboardContents(gangName string, name string, avatar string, videos []*youtube.Video) {
+templ VideoSearchResults(results []*youtube.SearchResult) {
+	if len(results) > 0 {
+		<div id="video-search-results" class="mt-4 space-y-4">
+			for _, result := range results {
+				<div class="flex items-center border dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
+					<div class="w-32 flex-shrink-0 mr-4">
+						if result.Snippet != nil && result.Snippet.Thumbnails != nil && result.Snippet.Thumbnails.Default != nil {
+							<img
+								src={ result.Snippet.Thumbnails.Default.Url }
+								alt="Video Thumbnail"
+								class="w-full h-auto rounded"
+							/>
+						}
+					</div>
+					<div class="flex-1 min-w-0">
+						<h4 class="text-sm font-medium text-gray-900 dark:text-white truncate">
+							if result.Snippet != nil {
+								{ result.Snippet.Title }
+							}
+						</h4>
+						<p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">
+							if result.Snippet != nil {
+								{ result.Snippet.Description }
+							}
+						</p>
+					</div>
+					<div class="ml-4">
+						<button
+							hx-post={ fmt.Sprintf("/videos/submit?videoId=%s", result.Id.VideoId) }
+							hx-target="#main-content"
+							hx-swap="outerHTML"
+							class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
+						>
+							Submit
+						</button>
+					</div>
+				</div>
+			}
+		</div>
+	} else {
+		<div class="mt-4 text-gray-500 dark:text-gray-400 text-center py-8">
+			No videos found. Try a different search term.
+		</div>
+	}
+}
+
+templ videoSearchForm() {
+	<div class="mt-8 bg-white dark:bg-gray-700 rounded-lg shadow p-4">
+		<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Suggest a Video</h3>
+		<form
+			hx-get="/videos/search"
+			hx-target="#video-search-results"
+			hx-swap="outerHTML"
+			hx-indicator="#search-indicator"
+			class="space-y-4"
+		>
+			<div class="flex space-x-2">
+				<div class="flex-1">
+					<input
+						type="text"
+						name="q"
+						placeholder="Search for YouTube videos..."
+						required
+						class="input-text"
+						hx-trigger="keyup changed delay:500ms"
+						hx-target="#video-search-results"
+						hx-get="/videos/search"
+					/>
+				</div>
+				<button
+					type="submit"
+					class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+				>
+					Search
+				</button>
+			</div>
+			@searchIndicator()
+		</form>
+		<div id="video-search-results" class="mt-4 space-y-4"></div>
+	</div>
+}
+
+templ dashboardContents(gangName string, name string, avatar string, videos []db.Video) {
 	<div class="space-y-6">
 		<div class="flex items-center justify-between">
 			<h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
@@ -45,7 +132,7 @@ templ dashboardContents(gangName string, name string, avatar string, videos []*y
 				You've successfully joined this gang! Get ready for YouTube Night!
 			</p>
 			<p class="mt-2 text-blue-600 dark:text-blue-200">
-				Please enjoy this wonderful video while you wait for the host to start the game.
+				Please enjoy these videos while you wait for the host to start the game.
 			</p>
 			<div class="mt-4">
 				for _, video := range videos {
@@ -53,6 +140,7 @@ templ dashboardContents(gangName string, name string, avatar string, videos []*y
 				}
 			</div>
 		</div>
+		@videoSearchForm()
 		<div class="space-y-4">
 			<h3 class="text-lg font-medium text-gray-900 dark:text-white">Game Status</h3>
 			<div class="p-4 bg-white dark:bg-gray-700 rounded-lg shadow">
@@ -74,6 +162,6 @@ templ dashboardContents(gangName string, name string, avatar string, videos []*y
 	</div>
 }
 
-templ Dashboard(gangName string, name string, avatar string, videos []*youtube.Video) {
+templ Dashboard(gangName string, name string, avatar string, videos []db.Video) {
 	@MainContent(dashboardContents(gangName, name, avatar, videos))
 }

@@ -1,0 +1,126 @@
+package stores
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/tristanbatchler/youtube_night/srv/internal/db"
+	"google.golang.org/api/youtube/v3"
+)
+
+type VideoSubmissionStore struct {
+	youtubeService *youtube.Service
+	dbPool         *pgxpool.Pool
+	queries        *db.Queries
+	logger         *log.Logger
+}
+
+func NewVideoSubmissionStore(youtubeService *youtube.Service, dbPool *pgxpool.Pool, logger *log.Logger) (*VideoSubmissionStore, error) {
+	if youtubeService == nil {
+		return nil, log.Output(2, "youtubeService cannot be nil")
+	}
+
+	if dbPool == nil {
+		return nil, log.Output(2, "dbPool cannot be nil")
+	}
+	if logger == nil {
+		return nil, log.Output(2, "logger cannot be nil")
+	}
+	return &VideoSubmissionStore{
+		youtubeService: youtubeService,
+		dbPool:         dbPool,
+		queries:        db.New(dbPool),
+		logger:         logger,
+	}, nil
+}
+
+func (s *VideoSubmissionStore) SubmitVideo(ctx context.Context, videoId string, userId int32, gangId int32) (db.VideoSubmission, error) {
+	emptySubmission := db.VideoSubmission{}
+
+	if videoId == "" {
+		return emptySubmission, fmt.Errorf("videoId cannot be empty")
+	}
+	if userId <= 0 {
+		return emptySubmission, fmt.Errorf("userId must be a positive integer")
+	}
+	if gangId <= 0 {
+		return emptySubmission, fmt.Errorf("gangId must be a positive integer")
+	}
+
+	videoList, err := s.youtubeService.Videos.List([]string{"snippet"}).Id(videoId).Do()
+	if err != nil {
+		return emptySubmission, fmt.Errorf("failed to fetch video details: %w", err)
+	}
+	if len(videoList.Items) == 0 {
+		return emptySubmission, fmt.Errorf("video with ID '%s' not found", videoId)
+	}
+	videoDetails := videoList.Items[0]
+
+	tx, err := s.dbPool.Begin(ctx)
+	if err != nil {
+		return emptySubmission, fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+	thumbnail := videoDetails.Snippet.Thumbnails.Maxres
+	if thumbnail == nil || thumbnail.Url == "" {
+		thumbnail = videoDetails.Snippet.Thumbnails.Default
+	}
+	video, err := qtx.CreateVideo(ctx, db.CreateVideoParams{
+		VideoID:      videoId,
+		Title:        videoDetails.Snippet.Title,
+		Description:  pgtype.Text{String: videoDetails.Snippet.Description, Valid: true},
+		ThumbnailUrl: pgtype.Text{String: thumbnail.Url, Valid: true},
+		ChannelName:  videoDetails.Snippet.ChannelTitle,
+	})
+	if err != nil {
+		return emptySubmission, fmt.Errorf("error creating video record: %w", err)
+	}
+	submission, err := qtx.CreateVideoSubmission(ctx, db.CreateVideoSubmissionParams{
+		VideoID: video.VideoID,
+		UserID:  userId,
+		GangID:  gangId,
+	})
+	if err != nil {
+		return emptySubmission, fmt.Errorf("error creating video submission: %w", err)
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		return emptySubmission, fmt.Errorf("error committing transaction: %w", err)
+	}
+	return submission, nil
+}
+
+func (s *VideoSubmissionStore) GetVideosSubmittedByGangId(ctx context.Context, gangId int32) ([]db.Video, error) {
+	if gangId <= 0 {
+		return nil, fmt.Errorf("gangId must be a positive integer")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	details, err := s.queries.GetVideosSubmittedByGangId(ctx, gangId)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching video submissions for gangId %d: %w", gangId, err)
+	}
+	if len(details) == 0 {
+		return nil, fmt.Errorf("no video submissions found for gangId %d", gangId)
+	}
+
+	videos := make([]db.Video, 0, len(details))
+	for _, detail := range details {
+		videos = append(videos, db.Video{
+			VideoID:      detail.VideoID,
+			Title:        detail.Title,
+			Description:  detail.Description,
+			ThumbnailUrl: detail.ThumbnailUrl,
+			ChannelName:  detail.ChannelName,
+		})
+	}
+	return videos, nil
+}

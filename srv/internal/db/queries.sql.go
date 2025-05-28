@@ -83,6 +83,70 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const createVideo = `-- name: CreateVideo :one
+INSERT INTO videos (
+    video_id, title, description, thumbnail_url, channel_name
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+RETURNING video_id, title, description, thumbnail_url, channel_name
+`
+
+type CreateVideoParams struct {
+	VideoID      string
+	Title        string
+	Description  pgtype.Text
+	ThumbnailUrl pgtype.Text
+	ChannelName  string
+}
+
+func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video, error) {
+	row := q.db.QueryRow(ctx, createVideo,
+		arg.VideoID,
+		arg.Title,
+		arg.Description,
+		arg.ThumbnailUrl,
+		arg.ChannelName,
+	)
+	var i Video
+	err := row.Scan(
+		&i.VideoID,
+		&i.Title,
+		&i.Description,
+		&i.ThumbnailUrl,
+		&i.ChannelName,
+	)
+	return i, err
+}
+
+const createVideoSubmission = `-- name: CreateVideoSubmission :one
+INSERT INTO video_submissions (
+    user_id, gang_id, video_id
+) VALUES (
+    $1, $2, $3
+)
+RETURNING id, user_id, gang_id, video_id, created_at
+`
+
+type CreateVideoSubmissionParams struct {
+	UserID  int32
+	GangID  int32
+	VideoID string
+}
+
+func (q *Queries) CreateVideoSubmission(ctx context.Context, arg CreateVideoSubmissionParams) (VideoSubmission, error) {
+	row := q.db.QueryRow(ctx, createVideoSubmission, arg.UserID, arg.GangID, arg.VideoID)
+	var i VideoSubmission
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.GangID,
+		&i.VideoID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getGangById = `-- name: GetGangById :one
 SELECT id, name, entry_password_hash, created_at FROM gangs
 WHERE id = $1
@@ -218,6 +282,74 @@ func (q *Queries) GetUsersInGang(ctx context.Context, gangID int32) ([]User, err
 			&i.AvatarPath,
 			&i.CreatedAt,
 			&i.LastLogin,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getVideoByVideoId = `-- name: GetVideoByVideoId :one
+SELECT video_id, title, description, thumbnail_url, channel_name FROM videos
+WHERE video_id = $1
+`
+
+func (q *Queries) GetVideoByVideoId(ctx context.Context, videoID string) (Video, error) {
+	row := q.db.QueryRow(ctx, getVideoByVideoId, videoID)
+	var i Video
+	err := row.Scan(
+		&i.VideoID,
+		&i.Title,
+		&i.Description,
+		&i.ThumbnailUrl,
+		&i.ChannelName,
+	)
+	return i, err
+}
+
+const getVideosSubmittedByGangId = `-- name: GetVideosSubmittedByGangId :many
+SELECT vs.id, vs.user_id, vs.gang_id, vs.video_id, vs.created_at, v.title, v.description, v.thumbnail_url, v.channel_name
+FROM video_submissions vs
+JOIN videos v ON vs.video_id = v.video_id
+WHERE vs.gang_id = $1
+ORDER BY vs.created_at DESC
+`
+
+type GetVideosSubmittedByGangIdRow struct {
+	ID           int32
+	UserID       int32
+	GangID       int32
+	VideoID      string
+	CreatedAt    pgtype.Timestamptz
+	Title        string
+	Description  pgtype.Text
+	ThumbnailUrl pgtype.Text
+	ChannelName  string
+}
+
+func (q *Queries) GetVideosSubmittedByGangId(ctx context.Context, gangID int32) ([]GetVideosSubmittedByGangIdRow, error) {
+	rows, err := q.db.Query(ctx, getVideosSubmittedByGangId, gangID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetVideosSubmittedByGangIdRow
+	for rows.Next() {
+		var i GetVideosSubmittedByGangIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.GangID,
+			&i.VideoID,
+			&i.CreatedAt,
+			&i.Title,
+			&i.Description,
+			&i.ThumbnailUrl,
+			&i.ChannelName,
 		); err != nil {
 			return nil, err
 		}
