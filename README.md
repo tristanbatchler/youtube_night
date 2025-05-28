@@ -52,6 +52,9 @@ Copy the output of the following command and use it as your session key in the `
 openssl rand -base64 32
 ```
 
+## Generate a YouTube API key
+You'll have to figure this one out on your own as I'm too lazy to write a guide for it. You can find the documentation here: https://developers.google.com/youtube/v3/getting-started
+
 ### Configuration
 Create a `.env` file in the `srv` directory with the following content:
 ```
@@ -62,6 +65,7 @@ PG_PASSWORD=<your_secure_password>
 PG_DATABASE=youtube_night
 WEB_PORT=9000
 SESSION_KEY="<your_generated_session_key>"
+YT_API_KEY=<your_youtube_api_key>
 ```
 
 You should replace the placeholders (including the angle brackets) with your actual values. Everything else can probably be left as is, but you are welcome to change them if you know what you are doing.

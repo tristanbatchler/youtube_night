@@ -1,5 +1,7 @@
 package templates
 
+import "time"
+
 templ header(title string) {
 	<head>
 		<meta charset="UTF-8"/>
@@ -77,6 +79,19 @@ templ themeToggle() {
 	</div>
 }
 
+templ footer() {
+	<footer class="py-4">
+		<div class="container mx-auto px-4">
+			<div class="flex justify-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+				{{ year := time.Now().Year() }}
+				<span class="space-x-4">&copy; { year } YouTube Night</span>
+				<a href="/terms" class="hover:underline space-x-4">Terms of Service</a>
+				<a href="/privacy" class="hover:underline space-x-4">Privacy Policy</a>
+			</div>
+		</div>
+	</footer>
+}
+
 templ Layout(contents templ.Component, title string) {
 	<!DOCTYPE html>
 	<html lang="en">
@@ -85,6 +100,7 @@ templ Layout(contents templ.Component, title string) {
 			@themeToggle()
 			<main class="flex flex-col items-center justify-center min-h-screen">
 				@contents
+				@footer()
 			</main>
 		</body>
 	</html>

@@ -19,21 +19,24 @@ import (
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
 	"github.com/tristanbatchler/youtube_night/srv/internal/templates"
 
+	"google.golang.org/api/youtube/v3"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
 const AppName = "YouTube Night"
 
 type server struct {
-	logger       *log.Logger
-	port         int
-	httpServer   *http.Server
-	sessionStore *stores.SessionStore
-	userStore    *stores.UserStore
-	gangStore    *stores.GangStore
+	logger         *log.Logger
+	port           int
+	httpServer     *http.Server
+	sessionStore   *stores.SessionStore
+	userStore      *stores.UserStore
+	gangStore      *stores.GangStore
+	youtubeService *youtube.Service
 }
 
-func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore) (*server, error) {
+func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore, youtubeService *youtube.Service) (*server, error) {
 	if logger == nil {
 		return nil, fmt.Errorf("logger cannot be nil")
 	}
@@ -48,11 +51,12 @@ func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStor
 	}
 
 	srv := &server{
-		logger:       logger,
-		port:         port,
-		sessionStore: sessionStore,
-		userStore:    userStore,
-		gangStore:    gangStore,
+		logger:         logger,
+		port:           port,
+		sessionStore:   sessionStore,
+		userStore:      userStore,
+		gangStore:      gangStore,
+		youtubeService: youtubeService,
 	}
 	return srv, nil
 }
@@ -72,6 +76,9 @@ func (s *server) Start() error {
 	publicMiddleware := middleware.Chain(loggingMiddleware, redirectIfAuthMiddleware)
 
 	router.Handle("GET /", publicMiddleware(http.HandlerFunc(s.homeHandler)))
+	router.Handle("GET /terms", loggingMiddleware(http.HandlerFunc(s.tosHandler)))
+	router.Handle("GET /privacy", loggingMiddleware(http.HandlerFunc(s.privacyHandler)))
+
 	router.Handle("GET /join", publicMiddleware(http.HandlerFunc(s.joinPageHandler)))
 	router.Handle("POST /join", publicMiddleware(http.HandlerFunc(s.joinActionHandler)))
 	router.Handle("GET /host", publicMiddleware(http.HandlerFunc(s.hostPageHandler)))
@@ -149,6 +156,14 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, t templ.Component, s
 
 func (s *server) homeHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, templates.Home(), http.StatusOK, "Home")
+}
+
+func (s *server) tosHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, r, templates.ToS(), http.StatusOK, "Terms of Service")
+}
+
+func (s *server) privacyHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, r, templates.Privacy(), http.StatusOK, "Privacy Policy")
 }
 
 func (s *server) joinPageHandler(w http.ResponseWriter, r *http.Request) {
@@ -396,7 +411,23 @@ func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// In a real app, you'd also fetch the user's data and any other necessary information
+	// Let's load some dumb videos' details for now. Pass the videos' details to the template to render
+	videoIds := []string{"i0SWjCOlG-8", "8wWpMR5mo-w", "nnqZdqljjXU"}
+	videoDetails := make([]*youtube.Video, 0, len(videoIds))
+
+	for _, videoId := range videoIds {
+		videoList, err := s.youtubeService.Videos.List([]string{"snippet"}).Id(videoId).Do()
+		if err != nil {
+			s.logger.Printf("Error fetching video details: %v", err)
+			continue
+		}
+		if len(videoList.Items) == 0 {
+			s.logger.Printf("No video found with ID: %s", videoId)
+			continue
+		}
+
+		videoDetails = append(videoDetails, videoList.Items[0])
+	}
 
 	// For now, use stored session data for name and avatar
 	var avatar string
@@ -418,7 +449,7 @@ func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		avatar = "👤"
 	}
-	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, avatar), http.StatusOK, "Dashboard")
+	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, avatar, videoDetails), http.StatusOK, "Dashboard")
 }
 
 func (s *server) logoutHandler(w http.ResponseWriter, r *http.Request) {

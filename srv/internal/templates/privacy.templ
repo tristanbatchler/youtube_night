@@ -1,0 +1,124 @@
+package templates
+
+templ privacyContents() {
+	<div class="max-w-3xl mx-auto text-left">
+		<h1 class="text-3xl font-bold mb-6 text-gray-900 dark:text-white tracking-tight text-center">
+			Privacy Policy
+		</h1>
+		<div class="space-y-6 text-gray-700 dark:text-gray-300">
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">1. Introduction</h2>
+				<p class="mb-3">
+					This Privacy Policy explains how YouTube Night ("we", "us", or "our") collects, uses, and shares your information
+					when you use our service. We value your privacy and are committed to protecting your personal information.
+				</p>
+				<p>
+					By using YouTube Night, you agree to the collection and use of information in accordance with this policy.
+				</p>
+			</section>
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">2. Information We Collect</h2>
+				<p class="mb-3">
+					<strong>Personal Information:</strong> When you use YouTube Night, we collect the following information:
+				</p>
+				<ul class="list-disc pl-6 mb-3">
+					<li>Display name (chosen by you when joining a gang)</li>
+					<li>Selected avatar</li>
+					<li>Gang membership information</li>
+				</ul>
+				<p class="mb-3">
+					<strong>Usage Data:</strong> We automatically collect certain information when you visit, use or navigate through our service:
+				</p>
+				<ul class="list-disc pl-6">
+					<li>IP address</li>
+					<li>Browser type and version</li>
+					<li>Pages visited and time spent</li>
+					<li>Device information</li>
+					<li>YouTube videos watched through our service</li>
+				</ul>
+			</section>
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">3. How We Use Your Information</h2>
+				<p class="mb-3">
+					We use the information we collect to:
+				</p>
+				<ul class="list-disc pl-6">
+					<li>Provide, maintain, and improve our service</li>
+					<li>Create and manage user accounts and gangs</li>
+					<li>Enable synchronization of YouTube videos between gang members</li>
+					<li>Monitor usage of our service for technical and security purposes</li>
+					<li>Comply with legal obligations</li>
+					<li>Respond to user inquiries and support requests</li>
+				</ul>
+			</section>
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">4. Cookies and Tracking Technologies</h2>
+				<p class="mb-3">
+					We use cookies and similar tracking technologies to track activity on our service and store certain information.
+					Cookies are files with a small amount of data that may include an anonymous unique identifier.
+				</p>
+				<p>
+					We use both session cookies (which expire when you close your browser) and persistent cookies (which remain on your device).
+					The cookies we use include authentication cookies to maintain your session and preferences.
+				</p>
+			</section>
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">5. Third-Party Services</h2>
+				<p class="mb-3">
+					YouTube Night integrates with YouTube and possibly other third-party services. Our service may contain links to
+					other sites that are not operated by us. We strongly advise you to review the Privacy Policy of every site you visit.
+				</p>
+				<p>
+					We have no control over and assume no responsibility for the content, privacy policies, or practices of any third-party
+					sites or services.
+				</p>
+			</section>
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">6. Data Retention</h2>
+				<p>
+					We store your data only for as long as necessary to provide you with our service and fulfill the purposes described
+					in this Privacy Policy. User data is generally retained for the duration of your session and may be deleted after a
+					period of inactivity.
+				</p>
+			</section>
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">7. Data Security</h2>
+				<p>
+					We use administrative, technical, and physical security measures to protect your personal information. However, no
+					method of transmission over the Internet or electronic storage is 100% secure, and we cannot guarantee absolute security.
+				</p>
+			</section>
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">8. Children's Privacy</h2>
+				<p>
+					Our service is not intended for use by children under the age of 13. We do not knowingly collect personally identifiable
+					information from children under 13. If you are a parent or guardian and you are aware that your child has provided us
+					with personal information, please contact us.
+				</p>
+			</section>
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">9. Changes to This Privacy Policy</h2>
+				<p>
+					We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy
+					on this page. You are advised to review this Privacy Policy periodically for any changes.
+				</p>
+			</section>
+			<section>
+				<h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">10. Contact Us</h2>
+				<p>
+					If you have any questions about this Privacy Policy, please contact us at
+					<a href="mailto:info@tbat.me" class="text-blue-600 dark:text-blue-400 hover:underline">info@tbat.me</a>.
+				</p>
+			</section>
+		</div>
+		<div class="mt-8 text-center">
+			<button class="btn-link">
+				<a href="/">← Back to Home</a>
+			</button>
+		</div>
+	</div>
+}
+
+templ Privacy() {
+	@MainContent(privacyContents())
+}

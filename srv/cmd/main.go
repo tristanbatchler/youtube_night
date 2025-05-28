@@ -13,16 +13,19 @@ import (
 	"github.com/tristanbatchler/youtube_night/srv/internal"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
+	"google.golang.org/api/option"
+	"google.golang.org/api/youtube/v3"
 )
 
 type config struct {
-	PgHost       string
-	PgPort       int
-	PgUser       string
-	PgPassword   string
-	PgDatabase   string
-	WebPort      int
-	SessionToken []byte
+	PgHost         string
+	PgPort         int
+	PgUser         string
+	PgPassword     string
+	PgDatabase     string
+	WebPort        int
+	SessionToken   []byte
+	YtApiClientKey string
 }
 
 func loadConfig() (*config, error) {
@@ -32,17 +35,22 @@ func loadConfig() (*config, error) {
 	}
 
 	cfg := &config{
-		PgHost:       os.Getenv("PG_HOST"),
-		PgPort:       5432, // Default PostgreSQL port
-		PgUser:       os.Getenv("PG_USER"),
-		PgPassword:   os.Getenv("PG_PASSWORD"),
-		PgDatabase:   os.Getenv("PG_DATABASE"),
-		WebPort:      9000, // Default web server port
-		SessionToken: []byte(os.Getenv("SESSION_TOKEN")),
+		PgHost:         os.Getenv("PG_HOST"),
+		PgPort:         5432, // Default PostgreSQL port
+		PgUser:         os.Getenv("PG_USER"),
+		PgPassword:     os.Getenv("PG_PASSWORD"),
+		PgDatabase:     os.Getenv("PG_DATABASE"),
+		WebPort:        9000, // Default web server port
+		SessionToken:   []byte(os.Getenv("SESSION_TOKEN")),
+		YtApiClientKey: os.Getenv("YT_API_KEY"),
 	}
 
 	if len(cfg.SessionToken) == 0 {
 		return nil, fmt.Errorf("SESSION_TOKEN environment variable is required")
+	}
+
+	if cfg.YtApiClientKey == "" {
+		return nil, fmt.Errorf("YT_API_KEY environment variable is required")
 	}
 
 	if cfg.PgHost == "" || cfg.PgUser == "" || cfg.PgPassword == "" || cfg.PgDatabase == "" {
@@ -74,13 +82,19 @@ func main() {
 		logger.Fatalf("Error loading configuration: %v", err)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	youtubeService, err := youtube.NewService(ctx, option.WithAPIKey(cfg.YtApiClientKey))
+	if err != nil {
+		logger.Fatalf("Error creating YouTube service: %v", err)
+	}
+
 	pgConnString := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		cfg.PgHost, cfg.PgPort, cfg.PgUser, cfg.PgPassword, cfg.PgDatabase,
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 	dbPool, err := pgxpool.New(ctx, pgConnString)
 	if err != nil {
 		logger.Fatalf("Error connecting to PostgreSQL: %v", err)
@@ -105,7 +119,7 @@ func main() {
 		logger.Fatalf("Error creating gang store: %v", err)
 	}
 
-	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore)
+	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore, youtubeService)
 	if err != nil {
 		logger.Fatalf("Error creating web server: %v", err)
 	}
