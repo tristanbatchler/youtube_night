@@ -108,9 +108,6 @@ func (s *VideoSubmissionStore) GetVideosSubmittedByGangId(ctx context.Context, g
 	if err != nil {
 		return nil, fmt.Errorf("error fetching video submissions for gangId %d: %w", gangId, err)
 	}
-	if len(details) == 0 {
-		return nil, fmt.Errorf("no video submissions found for gangId %d", gangId)
-	}
 
 	videos := make([]db.Video, 0, len(details))
 	for _, detail := range details {
