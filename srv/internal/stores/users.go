@@ -101,3 +101,51 @@ func (us *UserStore) GetUserById(ctx context.Context, userId int32) (db.User, er
 	}
 	return user, nil
 }
+
+func (us *UserStore) GetUsersByNameAndGangId(ctx context.Context, name string, gangId int32) ([]db.User, error) {
+	if name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+	if gangId <= 0 {
+		return nil, fmt.Errorf("gangId must be a positive integer")
+	}
+
+	users, err := us.queries.GetUsersByNameAndGangId(ctx, db.GetUsersByNameAndGangIdParams{
+		Name:   name,
+		GangID: gangId,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving users by name and gang ID: %w", err)
+	}
+	return users, nil
+}
+
+func (us *UserStore) UpdateUserAvatar(ctx context.Context, userId int32, avatarPath string) error {
+	if userId <= 0 {
+		return fmt.Errorf("userId must be a positive integer")
+	}
+	if avatarPath == "" {
+		return fmt.Errorf("avatarPath cannot be empty")
+	}
+
+	err := us.queries.UpdateUserAvatar(ctx, db.UpdateUserAvatarParams{
+		ID:         userId,
+		AvatarPath: pgtype.Text{String: avatarPath, Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("error updating user avatar: %w", err)
+	}
+	return nil
+}
+
+func (us *UserStore) UpdateUserLastLogin(ctx context.Context, userId int32) error {
+	if userId <= 0 {
+		return fmt.Errorf("userId must be a positive integer")
+	}
+
+	err := us.queries.UpdateUserLastLogin(ctx, userId)
+	if err != nil {
+		return fmt.Errorf("error updating user last login: %w", err)
+	}
+	return nil
+}

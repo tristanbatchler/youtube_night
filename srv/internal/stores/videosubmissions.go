@@ -96,7 +96,32 @@ func (s *VideoSubmissionStore) SubmitVideo(ctx context.Context, videoId string, 
 	return submission, nil
 }
 
-func (s *VideoSubmissionStore) GetVideosSubmittedByGangId(ctx context.Context, gangId int32) ([]db.Video, error) {
+func (s *VideoSubmissionStore) RemoveVideoSubmission(ctx context.Context, videoId string, userId int32, gangId int32) error {
+	if videoId == "" {
+		return fmt.Errorf("videoId cannot be empty")
+	}
+	if userId <= 0 {
+		return fmt.Errorf("userId must be a positive integer")
+	}
+	if gangId <= 0 {
+		return fmt.Errorf("gangId must be a positive integer")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	err := s.queries.DeleteVideoSubmission(ctx, db.DeleteVideoSubmissionParams{
+		VideoID: videoId,
+		UserID:  userId,
+		GangID:  gangId,
+	})
+	if err != nil {
+		return fmt.Errorf("error removing video submission for videoId %s: %w", videoId, err)
+	}
+	return nil
+}
+
+func (s *VideoSubmissionStore) GetVideosSubmittedByGangIdAndUserId(ctx context.Context, userId int32, gangId int32) ([]db.Video, error) {
 	if gangId <= 0 {
 		return nil, fmt.Errorf("gangId must be a positive integer")
 	}
@@ -104,7 +129,10 @@ func (s *VideoSubmissionStore) GetVideosSubmittedByGangId(ctx context.Context, g
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	details, err := s.queries.GetVideosSubmittedByGangId(ctx, gangId)
+	details, err := s.queries.GetVideosSubmittedByGangIdAndUserId(ctx, db.GetVideosSubmittedByGangIdAndUserIdParams{
+		GangID: gangId,
+		UserID: userId,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error fetching video submissions for gangId %d: %w", gangId, err)
 	}

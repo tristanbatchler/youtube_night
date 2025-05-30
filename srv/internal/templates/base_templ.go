@@ -31,7 +31,7 @@ func header(title string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta name=\"htmx-config\" content=\"{\n\t\t\t\t&#34;responseHandling&#34;:[\n\t\t\t\t\t{&#34;code&#34;:&#34;204&#34;, &#34;swap&#34;: false},\n\t\t\t\t\t{&#34;code&#34;:&#34;[23]..&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;422&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;401&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;[45]..&#34;, &#34;swap&#34;: false, &#34;error&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;...&#34;, &#34;swap&#34;: true}\n\t\t\t\t]\n\t\t\t}\"><link href=\"./static/css/style.css\" rel=\"stylesheet\"><link rel=\"manifest\" href=\"./static/images/favicons/site.webmanifest\"><link rel=\"icon\" href=\"./static/images/favicons/favicon.ico\" type=\"image/x-icon\"><link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,100,1,200&amp;icon_names=contrast,dark_mode,light_mode\" rel=\"stylesheet\"><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta name=\"htmx-config\" content=\"{\n\t\t\t\t&#34;responseHandling&#34;:[\n\t\t\t\t\t{&#34;code&#34;:&#34;204&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;[23]..&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;422&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;401&#34;, &#34;swap&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;[45]..&#34;, &#34;swap&#34;: false, &#34;error&#34;: true},\n\t\t\t\t\t{&#34;code&#34;:&#34;...&#34;, &#34;swap&#34;: true}\n\t\t\t\t]\n\t\t\t}\"><link href=\"./static/css/style.css\" rel=\"stylesheet\"><link rel=\"manifest\" href=\"./static/images/favicons/site.webmanifest\"><link rel=\"icon\" href=\"./static/images/favicons/favicon.ico\" type=\"image/x-icon\"><link href=\"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,100,1,200&amp;icon_names=contrast,dark_mode,light_mode\" rel=\"stylesheet\"><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -206,7 +206,7 @@ func MainContent(contents templ.Component) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div id=\"main-content\" class=\"card\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div id=\"main-content\" class=\"container mx-auto px-4 py-8\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

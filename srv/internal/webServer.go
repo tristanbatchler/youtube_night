@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -93,6 +92,10 @@ func (s *server) Start() error {
 	router.Handle("POST /host", publicMiddleware(http.HandlerFunc(s.hostActionHandler)))
 	router.Handle("GET /gangs/search", publicMiddleware(http.HandlerFunc(s.searchGangsHandler)))
 
+	// SEO routes - no auth middleware needed
+	router.Handle("GET /sitemap.xml", middleware.Logging(http.HandlerFunc(s.sitemapHandler)))
+	router.Handle("GET /robots.txt", middleware.Logging(http.HandlerFunc(s.robotsHandler)))
+
 	// Protected routes that require authentication
 	authMiddleware := middleware.Auth(s.logger, s.sessionStore, s.userStore, s.gangStore)
 	protectedMiddleware := middleware.Chain(middleware.Logging, middleware.ContentType, authMiddleware)
@@ -101,6 +104,7 @@ func (s *server) Start() error {
 	router.Handle("GET /logout", protectedMiddleware(http.HandlerFunc(s.logoutHandler)))
 	router.Handle("GET /videos/search", protectedMiddleware(http.HandlerFunc(s.searchVideosHandler)))
 	router.Handle("POST /videos/submit", protectedMiddleware(http.HandlerFunc(s.submitVideoHandler)))
+	router.Handle("POST /videos/remove", protectedMiddleware(http.HandlerFunc(s.removeVideoHandler)))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
@@ -235,6 +239,20 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get name from form
+	name := r.FormValue("name")
+	if name == "" {
+		s.logger.Println("Name is required")
+		validationErrors = append(validationErrors, "Name is required")
+	}
+
+	// Get avatar from form or use default
+	avatar := r.FormValue("avatar")
+	if avatar == "" {
+		s.logger.Println("No avatar selected, using default")
+		avatar = "default"
+	}
+
 	if len(validationErrors) > 0 {
 		s.logger.Printf("Validation errors: %v", validationErrors)
 		renderTemplate(w, r, templates.ValidationErrors(validationErrors), http.StatusUnprocessableEntity)
@@ -247,44 +265,69 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
 
-	// Get name from form or generate default
-	name := r.FormValue("name")
-	if name == "" {
-		name = "Guest" + strconv.FormatInt(time.Now().Unix(), 10)
-	}
-
-	// Get avatar from form or use default
-	avatar := r.FormValue("avatar")
-	if avatar == "" {
-		avatar = "👤"
-	}
-
-	// Create the user
-	user, err := s.userStore.CreateUser(ctx, db.CreateUserParams{
-		Name:       name,
-		AvatarPath: pgtype.Text{String: avatar, Valid: true},
-	})
+	// Create the user unless one already exists with the same name and is associated with the same gang the user is trying to join right now
+	// If the user already exists and is associated with the gang, but has a different avatar, we will update the avatar
+	user := db.User{}
+	sameNameUsersInGang, err := s.userStore.GetUsersByNameAndGangId(ctx, name, gang.ID)
 	if err != nil {
-		s.logger.Printf("Error creating user: %v", err)
-		http.Error(w, "Error creating user", http.StatusInternalServerError)
+		s.logger.Printf("Error retrieving users by name and gang ID: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	if len(sameNameUsersInGang) > 0 {
+		// User already exists with the same name in the gang
+		s.logger.Printf("User with name '%s' already exists in gang '%s'", name, gang.Name)
+		user = sameNameUsersInGang[0]
+		// Check if the avatar is different
+		if user.AvatarPath.String != avatar {
+			s.logger.Printf("Updating avatar for user '%s' in gang '%s'", user.Name, gang.Name)
+			// Update the avatar for the existing user
+			err = s.userStore.UpdateUserAvatar(ctx, user.ID, avatar)
+			if err != nil {
+				s.logger.Printf("Error updating user avatar: %v - will just not worry about it", err)
+			}
+			s.logger.Printf("Using existing user '%s' with ID %d in gang '%s'", user.Name, user.ID, gang.Name)
+		}
+	} else {
+		// Create a new user
+		s.logger.Printf("Creating new user with name '%s' and avatar '%s' for gang '%s'", name, avatar, gang.Name)
+		ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
+		defer cancel()
+		user, err = s.userStore.CreateUser(ctx, db.CreateUserParams{
+			Name:       name,
+			AvatarPath: pgtype.Text{String: avatar, Valid: true},
+		})
+		if err != nil {
+			s.logger.Printf("Error creating user: %v", err)
+			http.Error(w, "Error creating user", http.StatusInternalServerError)
+			return
+		}
+		s.logger.Printf("Created new user '%s' with ID %d", user.Name, user.ID)
 
-	// Associate the user with the gang
-	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
-	defer cancel()
-	err = s.userStore.AssociateUserWithGang(ctx, user, gang)
+		// Associate the user with the gang
+		ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
+		defer cancel()
+		err = s.userStore.AssociateUserWithGang(ctx, user, gang)
 
-	var gangAlreadyExistsError *stores.UserAlreadyInGangError
-	if err != nil && !errors.As(err, &gangAlreadyExistsError) {
-		s.logger.Printf("Error associating user with gang: %v", err)
-		http.Error(w, "Error joining gang", http.StatusInternalServerError)
-		return
+		var gangAlreadyExistsError *stores.UserAlreadyInGangError
+		if err != nil && !errors.As(err, &gangAlreadyExistsError) {
+			s.logger.Printf("Error associating user with gang: %v", err)
+			http.Error(w, "Error joining gang", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Create a session for the user
 	middleware.CreateSessionCookie(w, user.ID, gang.ID, gang.Name, user.Name, avatar)
 	s.logger.Printf("Successfully joined gang: %s", gang.Name)
+
+	// Update the user's last login time
+	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	err = s.userStore.UpdateUserLastLogin(ctx, user.ID)
+	if err != nil {
+		s.logger.Printf("Error updating user last login time: %v", err)
+	}
 
 	// Instead of redirecting to home, redirect to dashboard
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -336,6 +379,11 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 	} else if formGangEntryPassword != formGangEntryPasswordConfirm {
 		s.logger.Println("Gang entry passwords do not match")
 		validationErrors = append(validationErrors, "Gang entry passwords do not match")
+	}
+
+	if len(validationErrors) > 0 {
+		renderTemplate(w, r, templates.ValidationErrors(validationErrors), http.StatusUnprocessableEntity)
+		return
 	}
 
 	passwordHashBytes, err := bcrypt.GenerateFromPassword([]byte(formGangEntryPassword), bcrypt.DefaultCost)
@@ -414,20 +462,14 @@ func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
 
-	gang, err := s.gangStore.GetGangById(ctx, sessionData.GangId)
-	if err != nil {
-		s.logger.Printf("Error retrieving gang: %v", err)
-		http.Error(w, "Failed to load dashboard", http.StatusInternalServerError)
-		return
-	}
-
 	// Let's load the videos submitted by the gang
-	videoList, err := s.videoSubmissionStore.GetVideosSubmittedByGangId(ctx, sessionData.GangId)
+	videoList, err := s.videoSubmissionStore.GetVideosSubmittedByGangIdAndUserId(ctx, sessionData.UserId, sessionData.GangId)
 	if err != nil {
 		s.logger.Printf("Error fetching video details: %v", err)
 		http.Error(w, "Failed to load video details", http.StatusInternalServerError)
 		return
 	}
+	s.logger.Printf("Loaded %d videos for gang ID %d", len(videoList), sessionData.GangId)
 
 	// For now, use stored session data for name and avatar
 	var avatar string
@@ -449,6 +491,14 @@ func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		avatar = "👤"
 	}
+
+	gang, err := s.gangStore.GetGangById(ctx, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error fetching gang by ID: %v", err)
+		http.Error(w, "Failed to load gang details", http.StatusInternalServerError)
+		return
+	}
+
 	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, avatar, videoList), http.StatusOK, "Dashboard")
 }
 
@@ -525,4 +575,113 @@ func (s *server) submitVideoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.dashboardHandler(w, r) // Redirect to dashboard after submission
+}
+
+func (s *server) removeVideoHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the video ID from the form data
+	videoId := r.FormValue("videoId")
+	if videoId == "" {
+		http.Error(w, "Video ID is required", http.StatusBadRequest)
+		return
+	}
+	s.logger.Printf("Removing video with ID: %s", videoId)
+
+	// Get the session data
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get the userId and gangId from the session
+	userId := sessionData.UserId
+	gangId := sessionData.GangId
+
+	// Remove the video submission from the store
+	err := s.videoSubmissionStore.RemoveVideoSubmission(r.Context(), videoId, userId, gangId)
+	if err != nil {
+		s.logger.Printf("Error removing video: %v", err)
+		http.Error(w, "Error removing video", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with no content so that the htmx will replace itself with nothing
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *server) sitemapHandler(w http.ResponseWriter, r *http.Request) {
+	host := r.Host
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, host)
+
+	// Static page URLs
+	urls := []struct {
+		Loc        string
+		LastMod    string
+		ChangeFreq string
+		Priority   string
+	}{
+		{baseURL + "/", time.Now().Format("2006-01-02"), "weekly", "1.0"},
+		{baseURL + "/join", time.Now().Format("2006-01-02"), "weekly", "0.8"},
+		{baseURL + "/host", time.Now().Format("2006-01-02"), "weekly", "0.8"},
+		{baseURL + "/terms", time.Now().Format("2006-01-02"), "monthly", "0.5"},
+		{baseURL + "/privacy", time.Now().Format("2006-01-02"), "monthly", "0.5"},
+	}
+
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusOK)
+
+	// Write XML header and opening tags
+	fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`)
+
+	// Write each URL entry
+	for _, url := range urls {
+		fmt.Fprintf(w, `
+  <url>
+    <loc>%s</loc>
+    <lastmod>%s</lastmod>
+    <changefreq>%s</changefreq>
+    <priority>%s</priority>
+  </url>`, url.Loc, url.LastMod, url.ChangeFreq, url.Priority)
+	}
+
+	// Close the urlset tag
+	fmt.Fprintf(w, `
+</urlset>`)
+}
+
+func (s *server) robotsHandler(w http.ResponseWriter, r *http.Request) {
+	host := r.Host
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	sitemapURL := fmt.Sprintf("%s://%s/sitemap.xml", scheme, host)
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+
+	fmt.Fprintf(w, `User-agent: *
+Allow: /
+Allow: /join
+Allow: /host
+Allow: /terms
+Allow: /privacy
+
+# Disallow authenticated pages
+Disallow: /dashboard
+Disallow: /logout
+
+# Disallow API endpoints
+Disallow: /videos/search
+Disallow: /videos/submit
+Disallow: /gangs/search
+
+# Point to sitemap
+Sitemap: %s
+`, sitemapURL)
 }

@@ -86,6 +86,7 @@ func (gs *GangStore) CreateGang(ctx context.Context, name string, hostUserId int
 	err = qtx.AssociateUserWithGang(ctx, db.AssociateUserWithGangParams{
 		UserID: hostUserId,
 		GangID: gang.ID,
+		Ishost: true,
 	})
 	if err != nil {
 		return emptyGang, fmt.Errorf("error associating user with gang: %w", err)

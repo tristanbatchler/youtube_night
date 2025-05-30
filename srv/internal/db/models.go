@@ -24,9 +24,10 @@ type User struct {
 }
 
 type UsersGang struct {
-	UserID int32
-	GangID int32
-	Ishost pgtype.Bool
+	UserID       int32
+	GangID       int32
+	Ishost       bool
+	AssociatedAt pgtype.Timestamptz
 }
 
 type Video struct {

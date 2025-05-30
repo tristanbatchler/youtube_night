@@ -13,16 +13,16 @@ import (
 
 const associateUserWithGang = `-- name: AssociateUserWithGang :exec
 INSERT INTO users_gangs (
-    user_id, gang_id, isHost
+    user_id, gang_id, isHost, associated_at
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, CURRENT_TIMESTAMP
 )
 `
 
 type AssociateUserWithGangParams struct {
 	UserID int32
 	GangID int32
-	Ishost pgtype.Bool
+	Ishost bool
 }
 
 func (q *Queries) AssociateUserWithGang(ctx context.Context, arg AssociateUserWithGangParams) error {
@@ -147,6 +147,24 @@ func (q *Queries) CreateVideoSubmission(ctx context.Context, arg CreateVideoSubm
 	return i, err
 }
 
+const deleteVideoSubmission = `-- name: DeleteVideoSubmission :exec
+DELETE FROM video_submissions
+WHERE user_id = $1
+AND gang_id = $2
+AND video_id = $3
+`
+
+type DeleteVideoSubmissionParams struct {
+	UserID  int32
+	GangID  int32
+	VideoID string
+}
+
+func (q *Queries) DeleteVideoSubmission(ctx context.Context, arg DeleteVideoSubmissionParams) error {
+	_, err := q.db.Exec(ctx, deleteVideoSubmission, arg.UserID, arg.GangID, arg.VideoID)
+	return err
+}
+
 const getGangById = `-- name: GetGangById :one
 SELECT id, name, entry_password_hash, created_at FROM gangs
 WHERE id = $1
@@ -260,6 +278,44 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const getUsersByNameAndGangId = `-- name: GetUsersByNameAndGangId :many
+SELECT u.id, u.name, u.avatar_path, u.created_at, u.last_login FROM users u
+JOIN users_gangs ug ON u.id = ug.user_id
+WHERE u.name ILIKE $1
+AND ug.gang_id = $2
+`
+
+type GetUsersByNameAndGangIdParams struct {
+	Name   string
+	GangID int32
+}
+
+func (q *Queries) GetUsersByNameAndGangId(ctx context.Context, arg GetUsersByNameAndGangIdParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, getUsersByNameAndGangId, arg.Name, arg.GangID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.AvatarPath,
+			&i.CreatedAt,
+			&i.LastLogin,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUsersInGang = `-- name: GetUsersInGang :many
 SELECT u.id, u.name, u.avatar_path, u.created_at, u.last_login FROM users u
 JOIN users_gangs ug ON u.id = ug.user_id
@@ -311,15 +367,21 @@ func (q *Queries) GetVideoByVideoId(ctx context.Context, videoID string) (Video,
 	return i, err
 }
 
-const getVideosSubmittedByGangId = `-- name: GetVideosSubmittedByGangId :many
+const getVideosSubmittedByGangIdAndUserId = `-- name: GetVideosSubmittedByGangIdAndUserId :many
 SELECT vs.id, vs.user_id, vs.gang_id, vs.video_id, vs.created_at, v.title, v.description, v.thumbnail_url, v.channel_name
 FROM video_submissions vs
 JOIN videos v ON vs.video_id = v.video_id
 WHERE vs.gang_id = $1
+AND vs.user_id = $2
 ORDER BY vs.created_at DESC
 `
 
-type GetVideosSubmittedByGangIdRow struct {
+type GetVideosSubmittedByGangIdAndUserIdParams struct {
+	GangID int32
+	UserID int32
+}
+
+type GetVideosSubmittedByGangIdAndUserIdRow struct {
 	ID           int32
 	UserID       int32
 	GangID       int32
@@ -331,15 +393,15 @@ type GetVideosSubmittedByGangIdRow struct {
 	ChannelName  string
 }
 
-func (q *Queries) GetVideosSubmittedByGangId(ctx context.Context, gangID int32) ([]GetVideosSubmittedByGangIdRow, error) {
-	rows, err := q.db.Query(ctx, getVideosSubmittedByGangId, gangID)
+func (q *Queries) GetVideosSubmittedByGangIdAndUserId(ctx context.Context, arg GetVideosSubmittedByGangIdAndUserIdParams) ([]GetVideosSubmittedByGangIdAndUserIdRow, error) {
+	rows, err := q.db.Query(ctx, getVideosSubmittedByGangIdAndUserId, arg.GangID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetVideosSubmittedByGangIdRow
+	var items []GetVideosSubmittedByGangIdAndUserIdRow
 	for rows.Next() {
-		var i GetVideosSubmittedByGangIdRow
+		var i GetVideosSubmittedByGangIdAndUserIdRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -391,4 +453,31 @@ func (q *Queries) SearchGangs(ctx context.Context, dollar_1 pgtype.Text) ([]Gang
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserAvatar = `-- name: UpdateUserAvatar :exec
+UPDATE users
+SET avatar_path = $2
+WHERE id = $1
+`
+
+type UpdateUserAvatarParams struct {
+	ID         int32
+	AvatarPath pgtype.Text
+}
+
+func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error {
+	_, err := q.db.Exec(ctx, updateUserAvatar, arg.ID, arg.AvatarPath)
+	return err
+}
+
+const updateUserLastLogin = `-- name: UpdateUserLastLogin :exec
+UPDATE users
+SET last_login = CURRENT_TIMESTAMP
+WHERE id = $1
+`
+
+func (q *Queries) UpdateUserLastLogin(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, updateUserLastLogin, id)
+	return err
 }
