@@ -450,7 +450,16 @@ func (s *server) hostActionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.logger.Printf("Host action successful: user %v created and gang %v created", user, gang)
-	renderTemplate(w, r, templates.Home(), http.StatusOK, "Home - Host Successful")
+
+	// Get the host to join the gang they just created
+	middleware.CreateSessionCookie(w, user.ID, gang.ID, gang.Name, user.Name, formAvatar, true)
+	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	err = s.userStore.UpdateUserLastLogin(ctx, user.ID)
+	if err != nil {
+		s.logger.Printf("Error updating user last login time: %v", err)
+	}
+	http.Redirect(w, r, "/lobby", http.StatusSeeOther)
 }
 
 func (s *server) searchGangsHandler(w http.ResponseWriter, r *http.Request) {
