@@ -38,7 +38,7 @@ const (
 	GameStartMessage   = "game_start"
 	PlayerJoinMessage  = "player_join"
 	PlayerLeaveMessage = "player_leave"
-	GameUpdateMessage  = "game_update"
+	GameStopMessage    = "game_stop"
 )
 
 // Message is the structure of messages sent through WebSockets
@@ -177,10 +177,7 @@ func SendGameStart(hub *Hub, gangID int32, videos []db.Video) {
 // SendGameStop broadcasts a game stop message to a specific gang
 func SendGameStop(hub *Hub, gangID int32) {
 	message := Message{
-		Type: GameUpdateMessage,
-		Content: map[string]interface{}{
-			"status": "stopped",
-		},
+		Type: GameStopMessage,
 	}
 
 	// Convert message to JSON

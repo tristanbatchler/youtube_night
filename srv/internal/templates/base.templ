@@ -158,6 +158,9 @@ script websocketConnect(gangId int32, userId int32) {
 	if (message.type === "game_start") {
 		console.log("Game has started! Moving to game page...");
 		window.location.href = "/game"
+	} else if (message.type === "game_stop") {
+		console.log("Game has stopped! Moving to dashboard...");
+		window.location.href = "/dashboard"
 	}
   };
   

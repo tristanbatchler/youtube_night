@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"github.com/tristanbatchler/youtube_night/srv/internal/middleware"
+	"github.com/tristanbatchler/youtube_night/srv/internal/states"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
 	"github.com/tristanbatchler/youtube_night/srv/internal/templates"
 	"github.com/tristanbatchler/youtube_night/srv/internal/websocket"
@@ -37,7 +38,7 @@ type server struct {
 	videoSubmissionStore *stores.VideoSubmissionStore
 	youtubeService       *youtube.Service
 	wsHub                *websocket.Hub
-	gameStateManager     *GameStateManager
+	gameStateManager     *states.GameStateManager
 }
 
 func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore, videoSubmissionStore *stores.VideoSubmissionStore, youtubeService *youtube.Service, wsHub *websocket.Hub) (*server, error) {
@@ -72,7 +73,7 @@ func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStor
 		videoSubmissionStore: videoSubmissionStore,
 		youtubeService:       youtubeService,
 		wsHub:                wsHub,
-		gameStateManager:     NewGameStateManager(logger),
+		gameStateManager:     states.NewGameStateManager(logger),
 	}
 	return srv, nil
 }
@@ -525,12 +526,33 @@ func (s *server) gameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For now, just reply with a typical hardcoded response saying <h1>Game is running!</h1>
-	fmt.Fprintf(w, "<h1>Game is running!</h1>")
-	s.logger.Printf("Game is running for gang ID %d", sessionData.GangId)
+	// TODO: Why are we sending all videos in the websocket message when we're just going to grab them here anyway?
+	// State should be managed here and the websocket messages should just be kept simple!
+	gameState, exists := s.gameStateManager.GetGameState(sessionData.GangId)
+	if !exists {
+		s.logger.Println("No active game state found")
+		http.Error(w, "No active game state found", http.StatusInternalServerError)
+		return
+	}
+	renderTemplate(w, r, templates.Game(gameState, sessionData), http.StatusOK, "Game")
 }
 
 func (s *server) logoutHandler(w http.ResponseWriter, r *http.Request) {
+	// If you're the host of an active game, stop the game
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if sessionData.IsHost && s.gameStateManager.IsGameActive(sessionData.GangId) {
+		s.logger.Printf("User %d is host of gang %d, stopping active game before logout", sessionData.UserId, sessionData.GangId)
+		err := s.shutdownGame(sessionData)
+		if err != nil {
+			s.logger.Printf("Error stopping game: %v", err)
+		}
+	}
+
 	// Delete the session cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     middleware.SessionCookieName,
@@ -740,6 +762,26 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func (s *server) shutdownGame(sessionData *stores.SessionData) error {
+	// Check if the user is the host
+	if !sessionData.IsHost {
+		return fmt.Errorf("only the host can stop the game")
+	}
+
+	// Check if the game is actually running
+	if !s.gameStateManager.IsGameActive(sessionData.GangId) {
+		return fmt.Errorf("no active game to stop for gang ID %d", sessionData.GangId)
+	}
+
+	s.logger.Printf("Stopping game for gang ID %d", sessionData.GangId)
+	s.gameStateManager.StopGame(sessionData.GangId)
+
+	s.logger.Printf("Sending game stop message to gang ID %d", sessionData.GangId)
+	websocket.SendGameStop(s.wsHub, sessionData.GangId)
+
+	return nil
+}
+
 func (s *server) stopGameHandler(w http.ResponseWriter, r *http.Request) {
 	// Verify the user is authorized
 	sessionData, ok := middleware.GetSessionData(r)
@@ -748,26 +790,12 @@ func (s *server) stopGameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the user is the host
-	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
-	defer cancel()
-	isHost, err := s.userStore.IsUserHostOfGang(ctx, sessionData.UserId, sessionData.GangId)
+	err := s.shutdownGame(sessionData)
 	if err != nil {
-		s.logger.Printf("Error checking if user is host: %v", err)
-		http.Error(w, "Error checking host status", http.StatusInternalServerError)
+		s.logger.Printf("Error stopping game: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	if !isHost {
-		http.Error(w, "Only the host can stop the game", http.StatusForbidden)
-		return
-	}
-
-	s.logger.Printf("Stopping game for gang ID %d", sessionData.GangId)
-	s.gameStateManager.StopGame(sessionData.GangId)
-
-	s.logger.Printf("Sending game stop message to gang ID %d", sessionData.GangId)
-	websocket.SendGameStop(s.wsHub, sessionData.GangId)
 
 	w.WriteHeader(http.StatusOK)
 	response := struct {

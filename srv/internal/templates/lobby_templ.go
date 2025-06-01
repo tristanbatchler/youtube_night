@@ -460,36 +460,12 @@ func lobbyContents(videos []db.Video, sessionData *stores.SessionData) templ.Com
 			return templ_7745c5c3_Err
 		}
 		if len(videos) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<span id=\"videos-count-badge\" class=\"bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if len(videos) == 1 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "1 video")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				var templ_7745c5c3_Var19 string
-				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(len(videos))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 213, Col: 22}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, " videos")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</span>")
+			templ_7745c5c3_Err = videoCountBadge(len(videos)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -497,7 +473,7 @@ func lobbyContents(videos []db.Video, sessionData *stores.SessionData) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div></div><!-- Sidebar - Right/Bottom Section --><div class=\"space-y-6\"><!-- Video Search Section -->")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</div></div><!-- Sidebar - Right/Bottom Section --><div class=\"space-y-6\"><!-- Video Search Section -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -505,33 +481,33 @@ func lobbyContents(videos []db.Video, sessionData *stores.SessionData) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<!-- Help Card --><div class=\"bg-white dark:bg-gray-800 rounded-lg shadow-md p-5\"><h3 class=\"flex items-center text-lg font-medium text-gray-900 dark:text-white\">ℹ️ How It Works</h3><div class=\"mt-3 space-y-3 text-sm text-gray-600 dark:text-gray-400\"><p><span class=\"font-medium text-gray-900 dark:text-white\">1.</span> Anonymously suggest videos for the gang to watch using the search box.</p><p><span class=\"font-medium text-gray-900 dark:text-white\">2.</span> Wait for the host to start the game, revealing the videos everyone submitted.</p><p><span class=\"font-medium text-gray-900 dark:text-white\">3.</span> Watch each video and guess who submitted it.</p><p><span class=\"font-medium text-gray-900 dark:text-white\">4.</span> The host will reveal the correct answers and award points based on guesses.</p></div></div><!-- Wait for other players --><div class=\"bg-white dark:bg-gray-800 rounded-lg shadow-md p-5\"><h3 class=\"flex items-center text-lg font-medium text-gray-900 dark:text-white\">➕ Invite Friends</h3><p class=\"mt-2 text-sm text-gray-600 dark:text-gray-400\">Share this gang code with your friends so they can join:</p><div class=\"mt-3 bg-gray-100 dark:bg-gray-700 p-3 rounded-md\"><div class=\"flex items-center justify-between\"><code class=\"font-mono text-lg font-semibold\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<!-- Help Card --><div class=\"bg-white dark:bg-gray-800 rounded-lg shadow-md p-5\"><h3 class=\"flex items-center text-lg font-medium text-gray-900 dark:text-white\">ℹ️ How It Works</h3><div class=\"mt-3 space-y-3 text-sm text-gray-600 dark:text-gray-400\"><p><span class=\"font-medium text-gray-900 dark:text-white\">1.</span> Anonymously suggest videos for the gang to watch using the search box.</p><p><span class=\"font-medium text-gray-900 dark:text-white\">2.</span> Wait for the host to start the game, revealing the videos everyone submitted.</p><p><span class=\"font-medium text-gray-900 dark:text-white\">3.</span> Watch each video and guess who submitted it.</p><p><span class=\"font-medium text-gray-900 dark:text-white\">4.</span> The host will reveal the correct answers and award points based on guesses.</p></div></div><!-- Wait for other players --><div class=\"bg-white dark:bg-gray-800 rounded-lg shadow-md p-5\"><h3 class=\"flex items-center text-lg font-medium text-gray-900 dark:text-white\">➕ Invite Friends</h3><p class=\"mt-2 text-sm text-gray-600 dark:text-gray-400\">Share this gang code with your friends so they can join:</p><div class=\"mt-3 bg-gray-100 dark:bg-gray-700 p-3 rounded-md\"><div class=\"flex items-center justify-between\"><code class=\"font-mono text-lg font-semibold\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var19 string
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s", sessionData.GangName))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 250, Col: 94}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</code> <button class=\"text-indigo-600 hover:text-indigo-800\" title=\"Copy to clipboard\" onclick=\"navigator.clipboard.writeText(this.getAttribute(&#39;data-code&#39;)); this.innerHTML = &#39;Copied!&#39;;\" data-code=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s", sessionData.GangName))
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(sessionData.GangName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 256, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 255, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</code> <button class=\"text-indigo-600 hover:text-indigo-800\" title=\"Copy to clipboard\" onclick=\"navigator.clipboard.writeText(this.getAttribute(&#39;data-code&#39;)); this.innerHTML = &#39;Copied!&#39;;\" data-code=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var21 string
-		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(sessionData.GangName)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 261, Col: 40}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\"></path></svg></button></div></div></div></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z\"></path></svg></button></div></div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -555,9 +531,9 @@ func Lobby(videos []db.Video, sessionData *stores.SessionData) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var22 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var22 == nil {
-			templ_7745c5c3_Var22 = templ.NopComponent
+		templ_7745c5c3_Var21 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var21 == nil {
+			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = MainContent(lobbyContents(videos, sessionData)).Render(ctx, templ_7745c5c3_Buffer)

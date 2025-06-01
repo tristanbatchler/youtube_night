@@ -206,13 +206,7 @@ templ lobbyContents(videos []db.Video, sessionData *stores.SessionData) {
 					<div class="flex items-center justify-between mb-4">
 						<h2 class="text-xl font-semibold text-gray-900 dark:text-white">My submissions</h2>
 						if len(videos) > 0 {
-							<span id="videos-count-badge" class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
-								if len(videos) == 1 {
-									1 video
-								} else {
-									{ len(videos) } videos
-								}
-							</span>
+							@videoCountBadge(len(videos))
 						}
 					</div>
 					@videosList(videos)
