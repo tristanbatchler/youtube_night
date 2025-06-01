@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ import (
 	"github.com/tristanbatchler/youtube_night/srv/internal/middleware"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
 	"github.com/tristanbatchler/youtube_night/srv/internal/templates"
+	"github.com/tristanbatchler/youtube_night/srv/internal/websocket"
 
 	"google.golang.org/api/youtube/v3"
 
@@ -34,9 +36,10 @@ type server struct {
 	gangStore            *stores.GangStore
 	videoSubmissionStore *stores.VideoSubmissionStore
 	youtubeService       *youtube.Service
+	wsHub                *websocket.Hub
 }
 
-func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore, videoSubmissionStore *stores.VideoSubmissionStore, youtubeService *youtube.Service) (*server, error) {
+func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore, videoSubmissionStore *stores.VideoSubmissionStore, youtubeService *youtube.Service, wsHub *websocket.Hub) (*server, error) {
 	if logger == nil {
 		return nil, fmt.Errorf("logger cannot be nil")
 	}
@@ -55,6 +58,9 @@ func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStor
 	if youtubeService == nil {
 		return nil, fmt.Errorf("youtubeService cannot be nil")
 	}
+	if wsHub == nil {
+		return nil, fmt.Errorf("wsHub cannot be nil")
+	}
 
 	srv := &server{
 		logger:               logger,
@@ -64,6 +70,7 @@ func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStor
 		gangStore:            gangStore,
 		videoSubmissionStore: videoSubmissionStore,
 		youtubeService:       youtubeService,
+		wsHub:                wsHub,
 	}
 	return srv, nil
 }
@@ -99,6 +106,8 @@ func (s *server) Start() error {
 	// Protected routes that require authentication
 	authMiddleware := middleware.Auth(s.logger, s.sessionStore, s.userStore, s.gangStore)
 	protectedMiddleware := middleware.Chain(middleware.Logging, middleware.ContentType, authMiddleware)
+	router.Handle("GET /ws", protectedMiddleware(http.HandlerFunc(s.websocketHandler)))
+	router.Handle("POST /game/start", protectedMiddleware(http.HandlerFunc(s.startGameHandler)))
 	router.Handle("GET /dashboard", protectedMiddleware(http.HandlerFunc(s.dashboardHandler)))
 	router.Handle("POST /logout", protectedMiddleware(http.HandlerFunc(s.logoutHandler)))
 	router.Handle("GET /logout", protectedMiddleware(http.HandlerFunc(s.logoutHandler)))
@@ -499,7 +508,17 @@ func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, avatar, videoList), http.StatusOK, "Dashboard")
+	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+
+	isHost, err := s.userStore.IsUserHostOfGang(ctx, sessionData.UserId, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error checking if user is host of gang: %v", err)
+		http.Error(w, "Failed to check gang host status", http.StatusInternalServerError)
+		return
+	}
+
+	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, avatar, videoList, isHost, sessionData), http.StatusOK, "Dashboard")
 }
 
 func (s *server) logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -633,6 +652,100 @@ func (s *server) removeVideoHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.logger.Printf("Error rendering video remove response template: %v", err)
 	}
+}
+
+func (s *server) websocketHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check if the user is a host
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	isHost, err := s.userStore.IsUserHostOfGang(ctx, sessionData.UserId, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error checking if user is host: %v", err)
+		// Continue even if there's an error, assume they're not a host
+		isHost = false
+	}
+
+	// Serve WebSocket connection
+	websocket.ServeWs(s.wsHub, w, r, sessionData.UserId, sessionData.GangId, isHost)
+}
+
+func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
+	// Verify the user is authorized
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check if the user is the host
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	isHost, err := s.userStore.IsUserHostOfGang(ctx, sessionData.UserId, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error checking if user is host: %v", err)
+		http.Error(w, "Error checking host status", http.StatusInternalServerError)
+		return
+	}
+
+	if !isHost {
+		http.Error(w, "Only the host can start the game", http.StatusForbidden)
+		return
+	}
+
+	// Get all videos submitted to this gang
+	ctx, cancel = context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	allVideos, err := s.videoSubmissionStore.GetAllVideosInGang(ctx, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error getting all videos in gang: %v", err)
+		http.Error(w, "Error retrieving videos", http.StatusInternalServerError)
+		return
+	}
+
+	// Convert videos to the format needed for WebSocket
+	videoInfos := make([]websocket.VideoInfo, len(allVideos))
+	for i, video := range allVideos {
+		thumbnailURL := ""
+		description := ""
+
+		if video.ThumbnailUrl.Valid {
+			thumbnailURL = video.ThumbnailUrl.String
+		}
+
+		if video.Description.Valid {
+			description = video.Description.String
+		}
+
+		videoInfos[i] = websocket.VideoInfo{
+			VideoID:      video.VideoID,
+			Title:        video.Title,
+			ThumbnailURL: thumbnailURL,
+			ChannelName:  video.ChannelName,
+			Description:  description,
+		}
+	}
+
+	// Send game start message to all clients in this gang
+	websocket.SendGameStart(s.wsHub, sessionData.GangId, videoInfos)
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
+	response := struct {
+		Success bool `json:"success"`
+		Count   int  `json:"videoCount"`
+	}{
+		Success: true,
+		Count:   len(videoInfos),
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 func (s *server) sitemapHandler(w http.ResponseWriter, r *http.Request) {

@@ -149,3 +149,21 @@ func (us *UserStore) UpdateUserLastLogin(ctx context.Context, userId int32) erro
 	}
 	return nil
 }
+
+func (us *UserStore) IsUserHostOfGang(ctx context.Context, userId int32, gangId int32) (bool, error) {
+	if userId <= 0 {
+		return false, fmt.Errorf("userId must be a positive integer")
+	}
+	if gangId <= 0 {
+		return false, fmt.Errorf("gangId must be a positive integer")
+	}
+
+	isHost, err := us.queries.IsUserHostOfGang(ctx, db.IsUserHostOfGangParams{
+		UserID: userId,
+		GangID: gangId,
+	})
+	if err != nil {
+		return false, fmt.Errorf("error checking if user is host of gang: %w", err)
+	}
+	return isHost, nil
+}

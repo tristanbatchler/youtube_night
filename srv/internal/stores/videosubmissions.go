@@ -130,3 +130,19 @@ func (s *VideoSubmissionStore) GetVideosSubmittedByGangIdAndUserId(ctx context.C
 	}
 	return videos, nil
 }
+
+func (s *VideoSubmissionStore) GetAllVideosInGang(ctx context.Context, gangId int32) ([]db.Video, error) {
+	if gangId <= 0 {
+		return nil, fmt.Errorf("gangId must be a positive integer")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	videos, err := s.queries.GetAllVideosInGang(ctx, gangId)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching all videos in gang %d: %w", gangId, err)
+	}
+
+	return videos, nil
+}

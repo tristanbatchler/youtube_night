@@ -13,6 +13,7 @@ import (
 	"github.com/tristanbatchler/youtube_night/srv/internal"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
+	"github.com/tristanbatchler/youtube_night/srv/internal/websocket"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -124,7 +125,9 @@ func main() {
 		logger.Fatalf("Error creating video submission store: %v", err)
 	}
 
-	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore, videoSubmissionStore, youtubeService)
+	wsHub := websocket.NewHub(logger)
+
+	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore, videoSubmissionStore, youtubeService, wsHub)
 	if err != nil {
 		logger.Fatalf("Error creating web server: %v", err)
 	}

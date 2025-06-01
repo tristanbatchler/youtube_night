@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
+	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
 	"google.golang.org/api/youtube/v3"
 )
 
@@ -240,7 +241,38 @@ templ SubmitVideoResponse(video db.Video, totalCount int) {
 	</span>
 }
 
-templ dashboardContents(gangName string, name string, avatar string, videos []db.Video) {
+script websocketConnect(gangId int32, userId int32) {
+  // Create WebSocket connection
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  
+  console.log("Connecting to WebSocket at", wsUrl);
+  
+  const socket = new WebSocket(wsUrl);
+  
+  socket.onopen = function(e) {
+    console.log("WebSocket connection established");
+  };
+  
+  socket.onmessage = function(event) {
+    const message = JSON.parse(event.data);
+    console.log("WebSocket message received:", message);
+  };
+  
+  socket.onclose = function(event) {
+    if (event.wasClean) {
+      console.log(`WebSocket connection closed cleanly, code=${event.code}, reason=${event.reason}`);
+    } else {
+      console.log('WebSocket connection died');
+    }
+  };
+  
+  socket.onerror = function(error) {
+    console.error(`WebSocket error: ${error.message}`);
+  };
+}
+
+templ dashboardContents(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) {
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<header class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 mb-6 border-b border-gray-200 dark:border-gray-700">
@@ -284,9 +316,31 @@ templ dashboardContents(gangName string, name string, avatar string, videos []db
 							</div>
 							<div>
 								<h3 class="font-medium">Game status</h3>
-								<p class="text-lg">Waiting for host to start...</p>
+								<div class="flex items-center">
+									<p id="game-status" class="text-lg mr-3">
+										Waiting for host to start...
+									</p>
+									<span id="game-status-indicator" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+										Waiting
+									</span>
+								</div>
 							</div>
 						</div>
+						if isHost {
+							<div class="mt-4">
+								<button
+									id="start-game-btn"
+									class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow transition-colors"
+									hx-post="/game/start"
+									hx-swap="none"
+								>
+									Start Game
+								</button>
+								<p class="text-xs mt-1 text-white text-opacity-80">
+									As host, you can start the game when everyone has submitted their videos.
+								</p>
+							</div>
+						}
 					</div>
 				</div>
 				<!-- My Submissions Section -->
@@ -358,8 +412,9 @@ templ dashboardContents(gangName string, name string, avatar string, videos []db
 			</div>
 		</div>
 	</div>
+	@websocketConnect(sessionData.GangId, sessionData.UserId)
 }
 
-templ Dashboard(gangName string, name string, avatar string, videos []db.Video) {
-	@MainContent(dashboardContents(gangName, name, avatar, videos))
+templ Dashboard(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) {
+	@MainContent(dashboardContents(gangName, name, avatar, videos, isHost, sessionData))
 }

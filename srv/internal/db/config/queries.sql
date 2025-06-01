@@ -81,6 +81,13 @@ WHERE vs.gang_id = $1
 AND vs.user_id = $2
 ORDER BY vs.created_at DESC;
 
+-- name: GetAllVideosInGang :many
+SELECT v.*
+FROM video_submissions vs
+JOIN videos v ON vs.video_id = v.video_id
+WHERE vs.gang_id = $1
+ORDER BY vs.created_at DESC;
+
 -- name: GetUsersByNameAndGangId :many
 SELECT u.* FROM users u
 JOIN users_gangs ug ON u.id = ug.user_id
@@ -102,3 +109,8 @@ DELETE FROM video_submissions
 WHERE user_id = $1
 AND gang_id = $2
 AND video_id = $3;
+
+-- name: IsUserHostOfGang :one
+SELECT isHost FROM users_gangs
+WHERE user_id = $1
+AND gang_id = $2;

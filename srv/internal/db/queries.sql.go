@@ -157,6 +157,40 @@ func (q *Queries) DeleteVideoSubmission(ctx context.Context, arg DeleteVideoSubm
 	return err
 }
 
+const getAllVideosInGang = `-- name: GetAllVideosInGang :many
+SELECT v.video_id, v.title, v.description, v.thumbnail_url, v.channel_name
+FROM video_submissions vs
+JOIN videos v ON vs.video_id = v.video_id
+WHERE vs.gang_id = $1
+ORDER BY vs.created_at DESC
+`
+
+func (q *Queries) GetAllVideosInGang(ctx context.Context, gangID int32) ([]Video, error) {
+	rows, err := q.db.Query(ctx, getAllVideosInGang, gangID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Video
+	for rows.Next() {
+		var i Video
+		if err := rows.Scan(
+			&i.VideoID,
+			&i.Title,
+			&i.Description,
+			&i.ThumbnailUrl,
+			&i.ChannelName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getGangById = `-- name: GetGangById :one
 SELECT id, name, entry_password_hash, created_at FROM gangs
 WHERE id = $1
@@ -413,6 +447,24 @@ func (q *Queries) GetVideosSubmittedByGangIdAndUserId(ctx context.Context, arg G
 		return nil, err
 	}
 	return items, nil
+}
+
+const isUserHostOfGang = `-- name: IsUserHostOfGang :one
+SELECT isHost FROM users_gangs
+WHERE user_id = $1
+AND gang_id = $2
+`
+
+type IsUserHostOfGangParams struct {
+	UserID int32
+	GangID int32
+}
+
+func (q *Queries) IsUserHostOfGang(ctx context.Context, arg IsUserHostOfGangParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserHostOfGang, arg.UserID, arg.GangID)
+	var ishost bool
+	err := row.Scan(&ishost)
+	return ishost, err
 }
 
 const searchGangs = `-- name: SearchGangs :many
