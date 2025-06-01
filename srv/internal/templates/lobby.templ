@@ -259,8 +259,8 @@ script websocketConnect(gangId int32, userId int32) {
     console.log("WebSocket message received:", message);
 
 	if (message.type === "game_start") {
-		console.log("Game has started! Updating dashboard with all videos...");
-		handleGameStart(message.content);
+		console.log("Game has started! Moving to game page...");
+		window.location.href = `/game?gangId=${gangId}&userId=${userId}`;
 	}
   };
   
@@ -277,7 +277,7 @@ script websocketConnect(gangId int32, userId int32) {
   };
 }
 
-templ dashboardContents(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) {
+templ lobbyContents(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) {
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<header class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 mb-6 border-b border-gray-200 dark:border-gray-700">
@@ -420,6 +420,6 @@ templ dashboardContents(gangName string, name string, avatar string, videos []db
 	@websocketConnect(sessionData.GangId, sessionData.UserId)
 }
 
-templ Dashboard(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) {
-	@MainContent(dashboardContents(gangName, name, avatar, videos, isHost, sessionData))
+templ Lobby(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) {
+	@MainContent(lobbyContents(gangName, name, avatar, videos, isHost, sessionData))
 }

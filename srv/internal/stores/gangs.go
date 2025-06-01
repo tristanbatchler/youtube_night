@@ -146,3 +146,30 @@ func (gs *GangStore) GetGangById(ctx context.Context, id int32) (db.Gang, error)
 	}
 	return gang, nil
 }
+
+func (gs *GangStore) IsGameStarted(ctx context.Context, gangId int32) (bool, error) {
+	if gangId <= 0 {
+		return false, fmt.Errorf("invalid gang ID: %d", gangId)
+	}
+
+	isStarted, err := gs.queries.IsGangCurrentlyInGame(ctx, gangId)
+	if err != nil {
+		return false, fmt.Errorf("error checking if game is started for gang ID %d: %w", gangId, err)
+	}
+	return isStarted, nil
+}
+
+func (gs *GangStore) SetGameStarted(ctx context.Context, gangId int32, started bool) error {
+	if gangId <= 0 {
+		return fmt.Errorf("invalid gang ID: %d", gangId)
+	}
+
+	err := gs.queries.SetGangCurrentlyInGame(ctx, db.SetGangCurrentlyInGameParams{
+		ID:              gangId,
+		CurrentlyInGame: started,
+	})
+	if err != nil {
+		return fmt.Errorf("error setting game started for gang ID %d: %w", gangId, err)
+	}
+	return nil
+}

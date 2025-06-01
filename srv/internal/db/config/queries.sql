@@ -114,3 +114,12 @@ AND video_id = $3;
 SELECT isHost FROM users_gangs
 WHERE user_id = $1
 AND gang_id = $2;
+
+-- name: IsGangCurrentlyInGame :one
+SELECT currently_in_game FROM gangs
+WHERE id = $1;
+
+-- name: SetGangCurrentlyInGame :exec
+UPDATE gangs
+SET currently_in_game = $2
+WHERE id = $1;

@@ -94,7 +94,7 @@ func Auth(logger *log.Logger, sessionStore *stores.SessionStore, userStore *stor
 	}
 }
 
-// RedirectIfAuthenticated redirects users to the dashboard if they're already authenticated
+// RedirectIfAuthenticated redirects users to the game if they're already authenticated
 func RedirectIfAuthenticated(logger *log.Logger, sessionStore *stores.SessionStore, endpoint string) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -121,8 +121,8 @@ func RedirectIfAuthenticated(logger *log.Logger, sessionStore *stores.SessionSto
 				return
 			}
 
-			// User is authenticated, redirect to dashboard
-			logger.Printf("Authenticated user accessing %s, redirecting to dashboard", r.URL.Path)
+			// User is authenticated, redirect to game
+			logger.Printf("Authenticated user accessing %s, redirecting to game", r.URL.Path)
 			http.Redirect(w, r, endpoint, http.StatusSeeOther)
 		})
 	}

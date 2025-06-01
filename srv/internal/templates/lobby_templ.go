@@ -44,7 +44,7 @@ func videoCard(video db.Video) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("video-%s", video.VideoID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 14, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 14, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -71,7 +71,7 @@ func videoCard(video db.Video) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl.String)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 22, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 22, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -89,7 +89,7 @@ func videoCard(video db.Video) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 31, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 31, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -102,7 +102,7 @@ func videoCard(video db.Video) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 33, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 33, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -120,7 +120,7 @@ func videoCard(video db.Video) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(video.Description.String)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 37, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 37, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -138,7 +138,7 @@ func videoCard(video db.Video) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/videos/remove?videoId=%s", video.VideoID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 51, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 51, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -151,7 +151,7 @@ func videoCard(video db.Video) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("#video-%s", video.VideoID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 52, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 52, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -200,7 +200,7 @@ func searchResult(result *youtube.SearchResult) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl.String)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 77, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 77, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -218,7 +218,7 @@ func searchResult(result *youtube.SearchResult) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 87, Col: 99}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 87, Col: 99}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -231,7 +231,7 @@ func searchResult(result *youtube.SearchResult) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(result.Snippet.ChannelTitle)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 89, Col: 37}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 89, Col: 37}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -244,7 +244,7 @@ func searchResult(result *youtube.SearchResult) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(video.Description.String)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 91, Col: 115}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 91, Col: 115}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -262,7 +262,7 @@ func searchResult(result *youtube.SearchResult) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(video.VideoID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 101, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 101, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -275,7 +275,7 @@ func searchResult(result *youtube.SearchResult) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 102, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 102, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -288,7 +288,7 @@ func searchResult(result *youtube.SearchResult) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(result.Snippet.ChannelTitle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 103, Col: 82}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 103, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -301,7 +301,7 @@ func searchResult(result *youtube.SearchResult) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(video.Description.String)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 104, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 104, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -314,7 +314,7 @@ func searchResult(result *youtube.SearchResult) templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl.String)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 105, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 105, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -561,7 +561,7 @@ func videoCountBadge(count int) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(count)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 214, Col: 10}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 214, Col: 10}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -608,7 +608,7 @@ func RemoveVideoResponse(videoId string, videos []db.Video) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("video-%s", videoId))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 220, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 220, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -689,8 +689,8 @@ func SubmitVideoResponse(video db.Video, totalCount int) templ.Component {
 
 func websocketConnect(gangId int32, userId int32) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_websocketConnect_cd7c`,
-		Function: `function __templ_websocketConnect_cd7c(gangId, userId){// Create WebSocket connection
+		Name: `__templ_websocketConnect_23de`,
+		Function: `function __templ_websocketConnect_23de(gangId, userId){// Create WebSocket connection
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = ` + "`" + `${protocol}//${window.location.host}/ws` + "`" + `;
   
@@ -707,8 +707,8 @@ func websocketConnect(gangId int32, userId int32) templ.ComponentScript {
     console.log("WebSocket message received:", message);
 
 	if (message.type === "game_start") {
-		console.log("Game has started! Updating dashboard with all videos...");
-		handleGameStart(message.content);
+		console.log("Game has started! Moving to game page...");
+		window.location.href = ` + "`" + `/game?gangId=${gangId}&userId=${userId}` + "`" + `;
 	}
   };
   
@@ -724,12 +724,12 @@ func websocketConnect(gangId int32, userId int32) templ.ComponentScript {
     console.error(` + "`" + `WebSocket error: ${error.message}` + "`" + `);
   };
 }`,
-		Call:       templ.SafeScript(`__templ_websocketConnect_cd7c`, gangId, userId),
-		CallInline: templ.SafeScriptInline(`__templ_websocketConnect_cd7c`, gangId, userId),
+		Call:       templ.SafeScript(`__templ_websocketConnect_23de`, gangId, userId),
+		CallInline: templ.SafeScriptInline(`__templ_websocketConnect_23de`, gangId, userId),
 	}
 }
 
-func dashboardContents(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) templ.Component {
+func lobbyContents(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -757,7 +757,7 @@ func dashboardContents(gangName string, name string, avatar string, videos []db.
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(avatar)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 289, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 289, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -770,7 +770,7 @@ func dashboardContents(gangName string, name string, avatar string, videos []db.
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 290, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 290, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -783,7 +783,7 @@ func dashboardContents(gangName string, name string, avatar string, videos []db.
 		var templ_7745c5c3_Var33 string
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(gangName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 315, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 315, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -817,7 +817,7 @@ func dashboardContents(gangName string, name string, avatar string, videos []db.
 				var templ_7745c5c3_Var34 string
 				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(len(videos))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 360, Col: 22}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 360, Col: 22}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 				if templ_7745c5c3_Err != nil {
@@ -856,7 +856,7 @@ func dashboardContents(gangName string, name string, avatar string, videos []db.
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s", gangName))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 403, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 403, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
@@ -869,7 +869,7 @@ func dashboardContents(gangName string, name string, avatar string, videos []db.
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(gangName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/dashboard.templ`, Line: 408, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/lobby.templ`, Line: 408, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -887,7 +887,7 @@ func dashboardContents(gangName string, name string, avatar string, videos []db.
 	})
 }
 
-func Dashboard(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) templ.Component {
+func Lobby(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -908,7 +908,7 @@ func Dashboard(gangName string, name string, avatar string, videos []db.Video, i
 			templ_7745c5c3_Var37 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = MainContent(dashboardContents(gangName, name, avatar, videos, isHost, sessionData)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = MainContent(lobbyContents(gangName, name, avatar, videos, isHost, sessionData)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

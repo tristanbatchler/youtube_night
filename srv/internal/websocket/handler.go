@@ -181,3 +181,23 @@ func SendGameStart(hub *Hub, gangID int32, videos []VideoInfo) {
 	// Broadcast to the gang
 	hub.BroadcastToGang(gangID, jsonMessage)
 }
+
+// SendGameStop broadcasts a game stop message to a specific gang
+func SendGameStop(hub *Hub, gangID int32) {
+	message := Message{
+		Type: GameUpdateMessage,
+		Content: map[string]interface{}{
+			"status": "stopped",
+		},
+	}
+
+	// Convert message to JSON
+	jsonMessage, err := json.Marshal(message)
+	if err != nil {
+		hub.logger.Printf("Error marshaling game stop message: %v", err)
+		return
+	}
+
+	// Broadcast to the gang
+	hub.BroadcastToGang(gangID, jsonMessage)
+}

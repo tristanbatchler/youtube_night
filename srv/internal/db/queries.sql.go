@@ -36,7 +36,7 @@ INSERT INTO gangs (
 ) VALUES (
     $1, $2
 )
-RETURNING id, name, entry_password_hash, created_at
+RETURNING id, name, entry_password_hash, currently_in_game, created_at
 `
 
 type CreateGangParams struct {
@@ -51,6 +51,7 @@ func (q *Queries) CreateGang(ctx context.Context, arg CreateGangParams) (Gang, e
 		&i.ID,
 		&i.Name,
 		&i.EntryPasswordHash,
+		&i.CurrentlyInGame,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -192,7 +193,7 @@ func (q *Queries) GetAllVideosInGang(ctx context.Context, gangID int32) ([]Video
 }
 
 const getGangById = `-- name: GetGangById :one
-SELECT id, name, entry_password_hash, created_at FROM gangs
+SELECT id, name, entry_password_hash, currently_in_game, created_at FROM gangs
 WHERE id = $1
 `
 
@@ -203,13 +204,14 @@ func (q *Queries) GetGangById(ctx context.Context, id int32) (Gang, error) {
 		&i.ID,
 		&i.Name,
 		&i.EntryPasswordHash,
+		&i.CurrentlyInGame,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getGangByName = `-- name: GetGangByName :one
-SELECT id, name, entry_password_hash, created_at FROM gangs
+SELECT id, name, entry_password_hash, currently_in_game, created_at FROM gangs
 WHERE name = $1
 `
 
@@ -220,13 +222,14 @@ func (q *Queries) GetGangByName(ctx context.Context, name string) (Gang, error) 
 		&i.ID,
 		&i.Name,
 		&i.EntryPasswordHash,
+		&i.CurrentlyInGame,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getGangs = `-- name: GetGangs :many
-SELECT id, name, entry_password_hash, created_at FROM gangs
+SELECT id, name, entry_password_hash, currently_in_game, created_at FROM gangs
 ORDER BY name
 `
 
@@ -243,6 +246,7 @@ func (q *Queries) GetGangs(ctx context.Context) ([]Gang, error) {
 			&i.ID,
 			&i.Name,
 			&i.EntryPasswordHash,
+			&i.CurrentlyInGame,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -449,6 +453,18 @@ func (q *Queries) GetVideosSubmittedByGangIdAndUserId(ctx context.Context, arg G
 	return items, nil
 }
 
+const isGangCurrentlyInGame = `-- name: IsGangCurrentlyInGame :one
+SELECT currently_in_game FROM gangs
+WHERE id = $1
+`
+
+func (q *Queries) IsGangCurrentlyInGame(ctx context.Context, id int32) (bool, error) {
+	row := q.db.QueryRow(ctx, isGangCurrentlyInGame, id)
+	var currently_in_game bool
+	err := row.Scan(&currently_in_game)
+	return currently_in_game, err
+}
+
 const isUserHostOfGang = `-- name: IsUserHostOfGang :one
 SELECT isHost FROM users_gangs
 WHERE user_id = $1
@@ -468,7 +484,7 @@ func (q *Queries) IsUserHostOfGang(ctx context.Context, arg IsUserHostOfGangPara
 }
 
 const searchGangs = `-- name: SearchGangs :many
-SELECT id, name, entry_password_hash, created_at FROM gangs
+SELECT id, name, entry_password_hash, currently_in_game, created_at FROM gangs
 WHERE name ILIKE '%' || $1 || '%'
 ORDER BY name
 LIMIT 10
@@ -487,6 +503,7 @@ func (q *Queries) SearchGangs(ctx context.Context, dollar_1 pgtype.Text) ([]Gang
 			&i.ID,
 			&i.Name,
 			&i.EntryPasswordHash,
+			&i.CurrentlyInGame,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -497,6 +514,22 @@ func (q *Queries) SearchGangs(ctx context.Context, dollar_1 pgtype.Text) ([]Gang
 		return nil, err
 	}
 	return items, nil
+}
+
+const setGangCurrentlyInGame = `-- name: SetGangCurrentlyInGame :exec
+UPDATE gangs
+SET currently_in_game = $2
+WHERE id = $1
+`
+
+type SetGangCurrentlyInGameParams struct {
+	ID              int32
+	CurrentlyInGame bool
+}
+
+func (q *Queries) SetGangCurrentlyInGame(ctx context.Context, arg SetGangCurrentlyInGameParams) error {
+	_, err := q.db.Exec(ctx, setGangCurrentlyInGame, arg.ID, arg.CurrentlyInGame)
+	return err
 }
 
 const updateUserAvatar = `-- name: UpdateUserAvatar :exec

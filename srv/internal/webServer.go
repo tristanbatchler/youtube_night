@@ -86,7 +86,7 @@ func (s *server) Start() error {
 	router.Handle("GET /static/", http.StripPrefix("/static/", fileServer))
 
 	loggingMiddleware := middleware.Chain(middleware.Logging, middleware.ContentType)
-	redirectIfAuthMiddleware := middleware.RedirectIfAuthenticated(s.logger, s.sessionStore, "/dashboard")
+	redirectIfAuthMiddleware := middleware.RedirectIfAuthenticated(s.logger, s.sessionStore, "/game")
 	publicMiddleware := middleware.Chain(loggingMiddleware, redirectIfAuthMiddleware)
 
 	router.Handle("GET /", publicMiddleware(http.HandlerFunc(s.homeHandler)))
@@ -108,7 +108,9 @@ func (s *server) Start() error {
 	protectedMiddleware := middleware.Chain(middleware.Logging, middleware.ContentType, authMiddleware)
 	router.Handle("GET /ws", protectedMiddleware(http.HandlerFunc(s.websocketHandler)))
 	router.Handle("POST /game/start", protectedMiddleware(http.HandlerFunc(s.startGameHandler)))
-	router.Handle("GET /dashboard", protectedMiddleware(http.HandlerFunc(s.dashboardHandler)))
+	router.Handle("POST /game/stop", protectedMiddleware(http.HandlerFunc(s.stopGameHandler)))
+	router.Handle("GET /game", protectedMiddleware(http.HandlerFunc(s.gameHandler)))
+	router.Handle("GET /lobby", protectedMiddleware(http.HandlerFunc(s.lobbyHandler)))
 	router.Handle("POST /logout", protectedMiddleware(http.HandlerFunc(s.logoutHandler)))
 	router.Handle("GET /logout", protectedMiddleware(http.HandlerFunc(s.logoutHandler)))
 	router.Handle("GET /videos/search", protectedMiddleware(http.HandlerFunc(s.searchVideosHandler)))
@@ -338,8 +340,8 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 		s.logger.Printf("Error updating user last login time: %v", err)
 	}
 
-	// Instead of redirecting to home, redirect to dashboard
-	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	// Instead of redirecting to home, redirect to game
+	http.Redirect(w, r, "/game", http.StatusSeeOther)
 }
 
 func (s *server) hostPageHandler(w http.ResponseWriter, r *http.Request) {
@@ -459,7 +461,7 @@ func (s *server) searchGangsHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, templates.GangsList(gangs), http.StatusOK)
 }
 
-func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
+func (s *server) lobbyHandler(w http.ResponseWriter, r *http.Request) {
 	// Get session data
 	sessionData, ok := middleware.GetSessionData(r)
 	if !ok {
@@ -518,7 +520,35 @@ func (s *server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renderTemplate(w, r, templates.Dashboard(gang.Name, sessionData.Name, avatar, videoList, isHost, sessionData), http.StatusOK, "Dashboard")
+	renderTemplate(w, r, templates.Lobby(gang.Name, sessionData.Name, avatar, videoList, isHost, sessionData), http.StatusOK, "Lobby")
+}
+
+func (s *server) gameHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	// Check if the game has actually started, or redirect to the lobby
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	gameStarted, err := s.gangStore.IsGameStarted(ctx, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error checking if game has started: %v", err)
+		http.Error(w, "Failed to check game status", http.StatusInternalServerError)
+		return
+	}
+	if !gameStarted {
+		s.logger.Println("Game has not started yet, redirecting to lobby")
+		http.Redirect(w, r, "/lobby", http.StatusSeeOther)
+		return
+	}
+
+	// For now, just reply with a typical hardcoded response saying <h1>Game is running!</h1>
+	fmt.Fprintf(w, "<h1>Game is running!</h1>")
+	s.logger.Printf("Game is running for gang ID %d", sessionData.GangId)
 }
 
 func (s *server) logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -732,6 +762,16 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Set the game as started in the database
+	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	err = s.gangStore.SetGameStarted(ctx, sessionData.GangId, true)
+	if err != nil {
+		s.logger.Printf("Error setting game started: %v", err)
+		http.Error(w, "Error starting game", http.StatusInternalServerError)
+		return
+	}
+
 	// Send game start message to all clients in this gang
 	websocket.SendGameStart(s.wsHub, sessionData.GangId, videoInfos)
 
@@ -745,6 +785,51 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 		Count:   len(videoInfos),
 	}
 
+	json.NewEncoder(w).Encode(response)
+}
+
+func (s *server) stopGameHandler(w http.ResponseWriter, r *http.Request) {
+	// Verify the user is authorized
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check if the user is the host
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	isHost, err := s.userStore.IsUserHostOfGang(ctx, sessionData.UserId, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error checking if user is host: %v", err)
+		http.Error(w, "Error checking host status", http.StatusInternalServerError)
+		return
+	}
+
+	if !isHost {
+		http.Error(w, "Only the host can stop the game", http.StatusForbidden)
+		return
+	}
+
+	// Set the game as stopped in the database
+	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	err = s.gangStore.SetGameStarted(ctx, sessionData.GangId, false)
+	if err != nil {
+		s.logger.Printf("Error setting game stopped: %v", err)
+		http.Error(w, "Error stopping game", http.StatusInternalServerError)
+		return
+	}
+
+	// Notify all clients that the game has stopped
+	websocket.SendGameStop(s.wsHub, sessionData.GangId)
+
+	w.WriteHeader(http.StatusOK)
+	response := struct {
+		Success bool `json:"success"`
+	}{
+		Success: true,
+	}
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -812,7 +897,9 @@ Allow: /terms
 Allow: /privacy
 
 # Disallow authenticated pages
-Disallow: /dashboard
+Disallow: /lobby
+Disallow: /game
+Disallow: /ws
 Disallow: /logout
 
 # Disallow API endpoints

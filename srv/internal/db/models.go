@@ -12,6 +12,7 @@ type Gang struct {
 	ID                int32
 	Name              string
 	EntryPasswordHash string
+	CurrentlyInGame   bool
 	CreatedAt         pgtype.Timestamptz
 }
 

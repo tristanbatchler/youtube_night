@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS gangs (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     entry_password_hash TEXT NOT NULL,
+    currently_in_game BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
