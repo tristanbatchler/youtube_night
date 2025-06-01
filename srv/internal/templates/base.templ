@@ -1,6 +1,12 @@
 package templates
 
-import "time"
+import (
+	"fmt"
+	"github.com/tristanbatchler/youtube_night/srv/internal/db"
+	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
+	"github.com/tristanbatchler/youtube_night/srv/internal/util"
+	"time"
+)
 
 templ header(title string) {
 	<head>
@@ -130,4 +136,149 @@ templ searchIndicator() {
 		</svg>
 		<span>Searching...</span>
 	</div>
+}
+
+script websocketConnect(gangId int32, userId int32) {
+  // Create WebSocket connection
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  
+  console.log("Connecting to WebSocket at", wsUrl);
+  
+  const socket = new WebSocket(wsUrl);
+  
+  socket.onopen = function(e) {
+    console.log("WebSocket connection established");
+  };
+  
+  socket.onmessage = function(event) {
+    const message = JSON.parse(event.data);
+    console.log("WebSocket message received:", message);
+
+	if (message.type === "game_start") {
+		console.log("Game has started! Moving to game page...");
+		window.location.href = "/game"
+	}
+  };
+  
+  socket.onclose = function(event) {
+    if (event.wasClean) {
+      console.log(`WebSocket connection closed cleanly, code=${event.code}, reason=${event.reason}`);
+    } else {
+      console.log('WebSocket connection died');
+    }
+  };
+  
+  socket.onerror = function(error) {
+    console.error(`WebSocket error: ${error.message}`);
+  };
+}
+
+templ videoCountBadge(count int) {
+	<span id="videos-count-badge" class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+		if count == 1 {
+			1 video
+		} else {
+			{ count } videos
+		}
+	</span>
+}
+
+templ noVideosMessage() {
+	<div id="no-videos-message" class="text-gray-600 dark:text-gray-400">
+		<p>You haven't suggested any videos yet. Use the search box to find and suggest videos!</p>
+	</div>
+}
+
+templ videosList(videos []db.Video) {
+	<div id="videos-container">
+		<ul id="videos-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+			for _, video := range videos {
+				@videoCard(video)
+			}
+		</ul>
+		if len(videos) <= 0 {
+			@noVideosMessage()
+		}
+	</div>
+}
+
+templ videoCard(video db.Video) {
+	<div
+		class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative group"
+		id={ fmt.Sprintf("video-%s", video.VideoID) }
+	>
+		<!-- YouTube link for the video -->
+		<a href={ templ.SafeURL(fmt.Sprintf("https://www.youtube.com/watch?v=%s", video.VideoID)) } target="_blank" rel="noopener noreferrer" class="block">
+			<div class="relative">
+				if video.ThumbnailUrl != "" {
+					<div class="aspect-video w-full relative">
+						<img
+							src={ video.ThumbnailUrl }
+							alt="Video Thumbnail"
+							class="w-full h-full object-cover"
+						/>
+					</div>
+				}
+			</div>
+			<div class="p-4 pb-8">
+				<!-- Added extra padding at bottom for action area -->
+				<h3 class="font-semibold text-gray-900 dark:text-white line-clamp-1">{ video.Title }</h3>
+				<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">
+					{ video.ChannelName }
+				</p>
+				<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+					{ video.Description }
+				</p>
+			</div>
+		</a>
+		<!-- Action bar - always visible but subtle -->
+		<div class="absolute bottom-0 left-0 right-0 p-2 flex justify-between items-center bg-gradient-to-t from-gray-100 dark:from-gray-800 to-transparent">
+			<div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
+				🛜
+				<span>Cast</span>
+			</div>
+			<!-- Unsuggest button - always visible but subtle -->
+			<button
+				type="button"
+				hx-post={ fmt.Sprintf("/videos/remove?videoId=%s", video.VideoID) }
+				hx-target={ fmt.Sprintf("#video-%s", video.VideoID) }
+				hx-swap="outerHTML"
+				class="flex items-center text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 focus:outline-none transition-colors cursor-pointer"
+				aria-label="Remove suggestion"
+			>
+				🗑️
+				<span>Remove</span>
+			</button>
+		</div>
+	</div>
+}
+
+templ dashboardHeader(sessionData *stores.SessionData) {
+	@websocketConnect(sessionData.GangId, sessionData.UserId)
+	<header class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 mb-6 border-b border-gray-200 dark:border-gray-700">
+		<h1 class="text-3xl font-bold tracking-tight">
+			<span class="text-red-900 dark:text-red-300">YouTube</span>
+			<span class="text-indigo-900 dark:text-indigo-300">Night</span>
+		</h1>
+		<div class="mt-4 sm:mt-0 flex items-center bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-sm">
+			<div class="text-2xl mr-2">{ util.AvatarTextToEmoji(sessionData.Avatar) }</div>
+			<span class="font-medium text-gray-700 dark:text-gray-300 mr-2">{ sessionData.Name }</span>
+			// Online indicator (purely aesthetic)
+			<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+				Online
+			</span>
+			// Logout button
+			<a
+				hx-post="/logout"
+				hx-target="#main-content"
+				hx-swap="outerHTML"
+				class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-700 transition-colors ml-4 cursor-pointer"
+				title="Logout"
+				aria-label="Logout"
+			>
+				Leave gang
+			</a>
+		</div>
+	</header>
 }
