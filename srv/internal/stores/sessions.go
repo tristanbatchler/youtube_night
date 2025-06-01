@@ -26,6 +26,7 @@ type SessionData struct {
 	GangName  string
 	Name      string
 	Avatar    string
+	IsHost    bool
 	CreatedAt int64
 	Expiry    int64
 }

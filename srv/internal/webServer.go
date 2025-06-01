@@ -330,8 +330,15 @@ func (s *server) joinActionHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	isHost, err := s.userStore.IsUserHostOfGang(ctx, user.ID, gang.ID)
+	if err != nil {
+		s.logger.Printf("Error checking if user is host of gang: %v", err)
+		http.Error(w, "Failed to check gang host status", http.StatusInternalServerError)
+		return
+	}
+
 	// Create a session for the user
-	middleware.CreateSessionCookie(w, user.ID, gang.ID, gang.Name, user.Name, avatar)
+	middleware.CreateSessionCookie(w, user.ID, gang.ID, gang.Name, user.Name, avatar, isHost)
 	s.logger.Printf("Successfully joined gang: %s", gang.Name)
 
 	// Update the user's last login time
@@ -489,18 +496,7 @@ func (s *server) lobbyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	s.logger.Printf("Loaded %d videos for gang ID %d", len(videoList), sessionData.GangId)
 
-	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
-	defer cancel()
-
-	isHost, err := s.userStore.IsUserHostOfGang(ctx, sessionData.UserId, sessionData.GangId)
-	if err != nil {
-		s.logger.Printf("Error checking if user is host of gang: %v", err)
-		http.Error(w, "Failed to check gang host status", http.StatusInternalServerError)
-		return
-	}
-
-	// TODO: Add IsHost to sessionData
-	renderTemplate(w, r, templates.Lobby(videoList, isHost, sessionData), http.StatusOK, "Lobby")
+	renderTemplate(w, r, templates.Lobby(videoList, sessionData), http.StatusOK, "Lobby")
 }
 
 func (s *server) gameHandler(w http.ResponseWriter, r *http.Request) {

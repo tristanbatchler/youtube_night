@@ -140,7 +140,7 @@ func clearSessionAndRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create a session cookie for the authenticated user
-func CreateSessionCookie(w http.ResponseWriter, userId int32, gangId int32, gangName string, name string, avatar string) {
+func CreateSessionCookie(w http.ResponseWriter, userId int32, gangId int32, gangName string, name string, avatar string, isHost bool) {
 	// Create the session data
 	sessionData := &stores.SessionData{
 		UserId:    userId,
@@ -148,6 +148,7 @@ func CreateSessionCookie(w http.ResponseWriter, userId int32, gangId int32, gang
 		GangName:  gangName,
 		Name:      name,
 		Avatar:    avatar,
+		IsHost:    isHost,
 		CreatedAt: time.Now().Unix(),
 		Expiry:    time.Now().Add(SessionExpiration).Unix(),
 	}
