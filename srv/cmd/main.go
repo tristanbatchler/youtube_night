@@ -126,6 +126,7 @@ func main() {
 	}
 
 	wsHub := websocket.NewHub(logger)
+	go wsHub.Run()
 
 	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore, videoSubmissionStore, youtubeService, wsHub)
 	if err != nil {

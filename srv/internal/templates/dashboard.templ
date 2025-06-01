@@ -257,6 +257,11 @@ script websocketConnect(gangId int32, userId int32) {
   socket.onmessage = function(event) {
     const message = JSON.parse(event.data);
     console.log("WebSocket message received:", message);
+
+	if (message.type === "game_start") {
+		console.log("Game has started! Updating dashboard with all videos...");
+		handleGameStart(message.content);
+	}
   };
   
   socket.onclose = function(event) {
