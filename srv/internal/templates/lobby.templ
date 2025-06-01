@@ -2,7 +2,6 @@ package templates
 
 import (
 	"fmt"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
 	"google.golang.org/api/youtube/v3"
@@ -16,10 +15,10 @@ templ videoCard(video db.Video) {
 		<!-- YouTube link for the video -->
 		<a href={ templ.SafeURL(fmt.Sprintf("https://www.youtube.com/watch?v=%s", video.VideoID)) } target="_blank" rel="noopener noreferrer" class="block">
 			<div class="relative">
-				if video.ThumbnailUrl.Valid {
+				if video.ThumbnailUrl != "" {
 					<div class="aspect-video w-full relative">
 						<img
-							src={ video.ThumbnailUrl.String }
+							src={ video.ThumbnailUrl }
 							alt="Video Thumbnail"
 							class="w-full h-full object-cover"
 						/>
@@ -32,11 +31,9 @@ templ videoCard(video db.Video) {
 				<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">
 					{ video.ChannelName }
 				</p>
-				if video.Description.Valid {
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-						{ video.Description.String }
-					</p>
-				}
+				<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+					{ video.Description }
+				</p>
 			</div>
 		</a>
 		<!-- Action bar - always visible but subtle -->
@@ -63,18 +60,16 @@ templ videoCard(video db.Video) {
 
 templ searchResult(result *youtube.SearchResult) {
 	if result.Snippet != nil && result.Snippet.Thumbnails != nil && (result.Snippet.Thumbnails.Default != nil || result.Snippet.Thumbnails.Maxres != nil) {
-		{{ video := db.Video{VideoID: result.Id.VideoId, Title: result.Snippet.Title} }}
-		{{ video.Description = pgtype.Text{String: result.Snippet.Description, Valid: true} }}
-		{{ video.ThumbnailUrl = pgtype.Text{String: result.Snippet.Thumbnails.Default.Url, Valid: true} }}
+		{{ video := db.Video{VideoID: result.Id.VideoId, Title: result.Snippet.Title, Description: result.Snippet.Description, ThumbnailUrl: result.Snippet.Thumbnails.Default.Url, ChannelName: result.Snippet.ChannelTitle} }}
 		if result.Snippet.Thumbnails.Maxres != nil {
-			{{ video.ThumbnailUrl.String = result.Snippet.Thumbnails.Maxres.Url }}
+			{{ video.ThumbnailUrl = result.Snippet.Thumbnails.Maxres.Url }}
 		}
 		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
 			<div class="flex flex-col sm:flex-row w-full">
 				<!-- Thumbnail - Full width on mobile, fixed width on larger screens -->
 				<div class="w-full sm:w-40 sm:flex-shrink-0">
 					<img
-						src={ video.ThumbnailUrl.String }
+						src={ video.ThumbnailUrl }
 						alt="Video Thumbnail"
 						class="w-full h-40 sm:h-full object-cover"
 					/>
@@ -88,7 +83,7 @@ templ searchResult(result *youtube.SearchResult) {
 							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1 break-words">
 								{ result.Snippet.ChannelTitle }
 							</p>
-							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2 break-words">{ video.Description.String }</p>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2 break-words">{ video.Description }</p>
 						}
 					</div>
 					<!-- Button with form instead of query params -->
@@ -101,8 +96,8 @@ templ searchResult(result *youtube.SearchResult) {
 							<input type="hidden" name="videoId" value={ video.VideoID }/>
 							<input type="hidden" name="title" value={ video.Title }/>
 							<input type="hidden" name="channelName" value={ result.Snippet.ChannelTitle }/>
-							<input type="hidden" name="description" value={ video.Description.String }/>
-							<input type="hidden" name="thumbnailUrl" value={ video.ThumbnailUrl.String }/>
+							<input type="hidden" name="description" value={ video.Description }/>
+							<input type="hidden" name="thumbnailUrl" value={ video.ThumbnailUrl }/>
 							<button
 								type="submit"
 								class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
@@ -260,7 +255,7 @@ script websocketConnect(gangId int32, userId int32) {
 
 	if (message.type === "game_start") {
 		console.log("Game has started! Moving to game page...");
-		window.location.href = `/game?gangId=${gangId}&userId=${userId}`;
+		window.location.href = `/game`;
 	}
   };
   

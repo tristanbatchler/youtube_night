@@ -40,7 +40,7 @@ func NewVideoSubmissionStore(youtubeService *youtube.Service, dbPool *pgxpool.Po
 func (s *VideoSubmissionStore) SubmitVideo(ctx context.Context, video db.Video, userId int32, gangId int32) (db.VideoSubmission, error) {
 	emptySubmission := db.VideoSubmission{}
 
-	if video.VideoID == "" || video.Title == "" || !video.ThumbnailUrl.Valid || !video.Description.Valid || video.ChannelName == "" {
+	if video.VideoID == "" || video.Title == "" || video.ThumbnailUrl == "" {
 		return emptySubmission, fmt.Errorf("video details are incomplete")
 	}
 	if userId <= 0 {

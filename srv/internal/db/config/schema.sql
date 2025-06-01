@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS gangs (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     entry_password_hash TEXT NOT NULL,
-    currently_in_game BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -25,8 +24,8 @@ CREATE TABLE IF NOT EXISTS users_gangs (
 CREATE TABLE IF NOT EXISTS videos (
     video_id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
-    description TEXT DEFAULT NULL,
-    thumbnail_url TEXT DEFAULT NULL,
+    description TEXT NOT NULL,
+    thumbnail_url TEXT NOT NULL,
     channel_name TEXT NOT NULL
 );
 

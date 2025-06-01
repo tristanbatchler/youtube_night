@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 )
 
 const (
@@ -48,16 +49,7 @@ type Message struct {
 
 // GameStartContent contains data sent when a game starts
 type GameStartContent struct {
-	Videos []VideoInfo `json:"videos"`
-}
-
-// VideoInfo contains simplified video information
-type VideoInfo struct {
-	VideoID      string `json:"videoId"`
-	Title        string `json:"title"`
-	ThumbnailURL string `json:"thumbnailUrl"`
-	ChannelName  string `json:"channelName"`
-	Description  string `json:"description,omitempty"`
+	Videos []db.Video `json:"videos"`
 }
 
 // Connection wraps a WebSocket connection
@@ -163,7 +155,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request, userID int32, gan
 }
 
 // SendGameStart broadcasts a game start message with all videos to a specific gang
-func SendGameStart(hub *Hub, gangID int32, videos []VideoInfo) {
+func SendGameStart(hub *Hub, gangID int32, videos []db.Video) {
 	message := Message{
 		Type: GameStartMessage,
 		Content: GameStartContent{

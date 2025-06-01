@@ -37,6 +37,7 @@ type server struct {
 	videoSubmissionStore *stores.VideoSubmissionStore
 	youtubeService       *youtube.Service
 	wsHub                *websocket.Hub
+	gameStateManager     *GameStateManager
 }
 
 func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore, videoSubmissionStore *stores.VideoSubmissionStore, youtubeService *youtube.Service, wsHub *websocket.Hub) (*server, error) {
@@ -71,6 +72,7 @@ func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStor
 		videoSubmissionStore: videoSubmissionStore,
 		youtubeService:       youtubeService,
 		wsHub:                wsHub,
+		gameStateManager:     NewGameStateManager(logger),
 	}
 	return srv, nil
 }
@@ -469,11 +471,16 @@ func (s *server) lobbyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the latest gang and user data from the database
-	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
-	defer cancel()
+	// Check if this gang is current in an active game, and redirect to the game if so
+	if s.gameStateManager.IsGameActive(sessionData.GangId) {
+		s.logger.Printf("Gang ID %d is currently in an active game, redirecting to game page", sessionData.GangId)
+		http.Redirect(w, r, "/game", http.StatusSeeOther)
+		return
+	}
 
-	// Let's load the videos submitted by the gang
+	s.logger.Printf("Loading videos submitted for gang ID %d and user ID %d", sessionData.GangId, sessionData.UserId)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
 	videoList, err := s.videoSubmissionStore.GetVideosSubmittedByGangIdAndUserId(ctx, sessionData.UserId, sessionData.GangId)
 	if err != nil {
 		s.logger.Printf("Error fetching video details: %v", err)
@@ -483,6 +490,7 @@ func (s *server) lobbyHandler(w http.ResponseWriter, r *http.Request) {
 	s.logger.Printf("Loaded %d videos for gang ID %d", len(videoList), sessionData.GangId)
 
 	// For now, use stored session data for name and avatar
+	// TODO: This logic is repeated in multiple places, make it a function
 	var avatar string
 	switch sessionData.Avatar {
 	case "cat":
@@ -532,14 +540,8 @@ func (s *server) gameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the game has actually started, or redirect to the lobby
-	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
-	defer cancel()
-	gameStarted, err := s.gangStore.IsGameStarted(ctx, sessionData.GangId)
-	if err != nil {
-		s.logger.Printf("Error checking if game has started: %v", err)
-		http.Error(w, "Failed to check game status", http.StatusInternalServerError)
-		return
-	}
+	gameStarted := s.gameStateManager.IsGameActive(sessionData.GangId)
+
 	if !gameStarted {
 		s.logger.Println("Game has not started yet, redirecting to lobby")
 		http.Redirect(w, r, "/lobby", http.StatusSeeOther)
@@ -598,10 +600,13 @@ func (s *server) searchVideosHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) submitVideoHandler(w http.ResponseWriter, r *http.Request) {
 	// Get the video details
-	video := db.Video{VideoID: r.FormValue("videoId"), Title: r.FormValue("title")}
-	video.Description = pgtype.Text{String: r.FormValue("description"), Valid: true}
-	video.ThumbnailUrl = pgtype.Text{String: r.FormValue("thumbnailUrl"), Valid: true}
-	video.ChannelName = r.FormValue("channelName")
+	video := db.Video{
+		VideoID:      r.FormValue("videoId"),
+		Title:        r.FormValue("title"),
+		Description:  r.FormValue("description"),
+		ThumbnailUrl: r.FormValue("thumbnailUrl"),
+		ChannelName:  r.FormValue("channelName"),
+	}
 
 	s.logger.Printf("Submitting video %v", video)
 
@@ -739,41 +744,11 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert videos to the format needed for WebSocket
-	videoInfos := make([]websocket.VideoInfo, len(allVideos))
-	for i, video := range allVideos {
-		thumbnailURL := ""
-		description := ""
+	s.logger.Printf("Starting game for gang ID %d with %d videos", sessionData.GangId, len(allVideos))
+	s.gameStateManager.StartGame(sessionData.GangId, allVideos)
 
-		if video.ThumbnailUrl.Valid {
-			thumbnailURL = video.ThumbnailUrl.String
-		}
-
-		if video.Description.Valid {
-			description = video.Description.String
-		}
-
-		videoInfos[i] = websocket.VideoInfo{
-			VideoID:      video.VideoID,
-			Title:        video.Title,
-			ThumbnailURL: thumbnailURL,
-			ChannelName:  video.ChannelName,
-			Description:  description,
-		}
-	}
-
-	// Set the game as started in the database
-	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
-	defer cancel()
-	err = s.gangStore.SetGameStarted(ctx, sessionData.GangId, true)
-	if err != nil {
-		s.logger.Printf("Error setting game started: %v", err)
-		http.Error(w, "Error starting game", http.StatusInternalServerError)
-		return
-	}
-
-	// Send game start message to all clients in this gang
-	websocket.SendGameStart(s.wsHub, sessionData.GangId, videoInfos)
+	s.logger.Printf("Sending game start message to gang ID %d with %d videos", sessionData.GangId, len(allVideos))
+	websocket.SendGameStart(s.wsHub, sessionData.GangId, allVideos)
 
 	// Return success
 	w.WriteHeader(http.StatusOK)
@@ -782,7 +757,7 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 		Count   int  `json:"videoCount"`
 	}{
 		Success: true,
-		Count:   len(videoInfos),
+		Count:   len(allVideos),
 	}
 
 	json.NewEncoder(w).Encode(response)
@@ -811,17 +786,10 @@ func (s *server) stopGameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set the game as stopped in the database
-	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
-	defer cancel()
-	err = s.gangStore.SetGameStarted(ctx, sessionData.GangId, false)
-	if err != nil {
-		s.logger.Printf("Error setting game stopped: %v", err)
-		http.Error(w, "Error stopping game", http.StatusInternalServerError)
-		return
-	}
+	s.logger.Printf("Stopping game for gang ID %d", sessionData.GangId)
+	s.gameStateManager.StopGame(sessionData.GangId)
 
-	// Notify all clients that the game has stopped
+	s.logger.Printf("Sending game stop message to gang ID %d", sessionData.GangId)
 	websocket.SendGameStop(s.wsHub, sessionData.GangId)
 
 	w.WriteHeader(http.StatusOK)

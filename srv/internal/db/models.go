@@ -12,7 +12,6 @@ type Gang struct {
 	ID                int32
 	Name              string
 	EntryPasswordHash string
-	CurrentlyInGame   bool
 	CreatedAt         pgtype.Timestamptz
 }
 
@@ -34,8 +33,8 @@ type UsersGang struct {
 type Video struct {
 	VideoID      string
 	Title        string
-	Description  pgtype.Text
-	ThumbnailUrl pgtype.Text
+	Description  string
+	ThumbnailUrl string
 	ChannelName  string
 }
 
