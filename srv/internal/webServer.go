@@ -489,13 +489,6 @@ func (s *server) lobbyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	s.logger.Printf("Loaded %d videos for gang ID %d", len(videoList), sessionData.GangId)
 
-	gang, err := s.gangStore.GetGangById(ctx, sessionData.GangId)
-	if err != nil {
-		s.logger.Printf("Error fetching gang by ID: %v", err)
-		http.Error(w, "Failed to load gang details", http.StatusInternalServerError)
-		return
-	}
-
 	ctx, cancel = context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
 
@@ -506,8 +499,8 @@ func (s *server) lobbyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Why are we passing in sessionData.* and also sessionData? Why not just pass in sessionData?
-	renderTemplate(w, r, templates.Lobby(gang.Name, sessionData.Name, sessionData.Avatar, videoList, isHost, sessionData), http.StatusOK, "Lobby")
+	// TODO: Add IsHost to sessionData
+	renderTemplate(w, r, templates.Lobby(videoList, isHost, sessionData), http.StatusOK, "Lobby")
 }
 
 func (s *server) gameHandler(w http.ResponseWriter, r *http.Request) {

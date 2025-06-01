@@ -275,7 +275,10 @@ script websocketConnect(gangId int32, userId int32) {
   };
 }
 
-templ lobbyContents(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) {
+templ lobbyContents(videos []db.Video, isHost bool, sessionData *stores.SessionData) {
+	{{ name := sessionData.Name }}
+	{{ avatar := sessionData.Avatar }}
+	{{ gangName := sessionData.GangName }}
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<header class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 mb-6 border-b border-gray-200 dark:border-gray-700">
@@ -418,6 +421,6 @@ templ lobbyContents(gangName string, name string, avatar string, videos []db.Vid
 	@websocketConnect(sessionData.GangId, sessionData.UserId)
 }
 
-templ Lobby(gangName string, name string, avatar string, videos []db.Video, isHost bool, sessionData *stores.SessionData) {
-	@MainContent(lobbyContents(gangName, name, avatar, videos, isHost, sessionData))
+templ Lobby(videos []db.Video, isHost bool, sessionData *stores.SessionData) {
+	@MainContent(lobbyContents(videos, isHost, sessionData))
 }
