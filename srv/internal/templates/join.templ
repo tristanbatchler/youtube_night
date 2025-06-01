@@ -1,6 +1,9 @@
 package templates
 
-import "github.com/tristanbatchler/youtube_night/srv/internal/db"
+import (
+	"github.com/tristanbatchler/youtube_night/srv/internal/db"
+	"github.com/tristanbatchler/youtube_night/srv/internal/util"
+)
 
 templ GangsList(gangs []db.Gang) {
 	if len(gangs) > 0 {
@@ -64,13 +67,9 @@ templ joinContents() {
 				/>
 				<label class="input-label mt-4">Pick an Avatar</label>
 				<div class="flex flex-wrap gap-4">
-					@avatarOption("cat", "🐱", true)
-					@avatarOption("dog", "🐶", false)
-					@avatarOption("dragon", "🐲", false)
-					@avatarOption("alien", "👽", false)
-					@avatarOption("robot", "🤖", false)
-					@avatarOption("ghost", "👻", false)
-					@avatarOption("wizard", "🧙", false)
+					for emoji, text := range util.AvatarEmojis {
+						@avatarOption(text, emoji, false)
+					}
 				</div>
 				<label for="gangEntryPassword" class="input-label mt-4">Entry Password</label>
 				<input

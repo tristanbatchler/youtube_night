@@ -8,6 +8,8 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "github.com/tristanbatchler/youtube_night/srv/internal/util"
+
 func avatarOption(label string, emoji string, selected bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -36,7 +38,7 @@ func avatarOption(label string, emoji string, selected bool) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/host.templ`, Line: 8, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/host.templ`, Line: 10, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -49,7 +51,7 @@ func avatarOption(label string, emoji string, selected bool) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(selected)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/host.templ`, Line: 10, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/host.templ`, Line: 12, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -62,7 +64,7 @@ func avatarOption(label string, emoji string, selected bool) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(emoji)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/host.templ`, Line: 13, Col: 10}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/host.templ`, Line: 15, Col: 10}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -101,33 +103,11 @@ func hostContents() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = avatarOption("cat", "🐱", true).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("dog", "🐶", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("dragon", "🐲", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("alien", "👽", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("robot", "🤖", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("ghost", "👻", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("wizard", "🧙", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		for emoji, text := range util.AvatarEmojis {
+			templ_7745c5c3_Err = avatarOption(text, emoji, false).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div></div><div class=\"text-left\"><label for=\"gangName\" class=\"input-label\">Gang Name</label> <input type=\"text\" id=\"gangName\" name=\"gangName\" required placeholder=\"e.g. Tamriel Westside\" class=\"input-text\" autocomplete=\"off\" data-1p-ignore data-lpignore=\"true\" data-protonpass-ignore=\"true\" data-bw-ignore=\"true\"></div><div class=\"text-left\"><label for=\"gangEntryPassword\" class=\"input-label\">Entry Password</label> <input type=\"password\" id=\"gangEntryPassword\" name=\"gangEntryPassword\" required placeholder=\"Choose a password for your gang\" class=\"input-text\"></div><div class=\"text-left\"><label for=\"gangEntryPasswordConfirm\" class=\"input-label\">Confirm Password</label> <input type=\"password\" id=\"gangEntryPasswordConfirm\" name=\"gangEntryPasswordConfirm\" required placeholder=\"Re-enter your password\" class=\"input-text\"></div><button type=\"submit\" class=\"btn-primary\">Start Hosting</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"btn-link mt-4\">← Back to Home</button></div>")
 		if templ_7745c5c3_Err != nil {

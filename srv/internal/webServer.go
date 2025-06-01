@@ -489,28 +489,6 @@ func (s *server) lobbyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	s.logger.Printf("Loaded %d videos for gang ID %d", len(videoList), sessionData.GangId)
 
-	// For now, use stored session data for name and avatar
-	// TODO: This logic is repeated in multiple places, make it a function
-	var avatar string
-	switch sessionData.Avatar {
-	case "cat":
-		avatar = "🐱"
-	case "dog":
-		avatar = "🐶"
-	case "dragon":
-		avatar = "🐉"
-	case "alien":
-		avatar = "👽"
-	case "robot":
-		avatar = "🤖"
-	case "ghost":
-		avatar = "👻"
-	case "wizard":
-		avatar = "🧙‍♂️"
-	default:
-		avatar = "👤"
-	}
-
 	gang, err := s.gangStore.GetGangById(ctx, sessionData.GangId)
 	if err != nil {
 		s.logger.Printf("Error fetching gang by ID: %v", err)
@@ -528,7 +506,8 @@ func (s *server) lobbyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renderTemplate(w, r, templates.Lobby(gang.Name, sessionData.Name, avatar, videoList, isHost, sessionData), http.StatusOK, "Lobby")
+	// TODO: Why are we passing in sessionData.* and also sessionData? Why not just pass in sessionData?
+	renderTemplate(w, r, templates.Lobby(gang.Name, sessionData.Name, sessionData.Avatar, videoList, isHost, sessionData), http.StatusOK, "Lobby")
 }
 
 func (s *server) gameHandler(w http.ResponseWriter, r *http.Request) {

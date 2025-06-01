@@ -8,7 +8,10 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/tristanbatchler/youtube_night/srv/internal/db"
+import (
+	"github.com/tristanbatchler/youtube_night/srv/internal/db"
+	"github.com/tristanbatchler/youtube_night/srv/internal/util"
+)
 
 func GangsList(gangs []db.Gang) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -44,7 +47,7 @@ func GangsList(gangs []db.Gang) templ.Component {
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(gang.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/join.templ`, Line: 15, Col: 16}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/join.templ`, Line: 18, Col: 16}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {
@@ -89,33 +92,11 @@ func joinContents() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = avatarOption("cat", "🐱", true).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("dog", "🐶", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("dragon", "🐲", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("alien", "👽", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("robot", "🤖", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("ghost", "👻", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = avatarOption("wizard", "🧙", false).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		for emoji, text := range util.AvatarEmojis {
+			templ_7745c5c3_Err = avatarOption(text, emoji, false).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div><label for=\"gangEntryPassword\" class=\"input-label mt-4\">Entry Password</label> <input type=\"password\" id=\"gangEntryPassword\" name=\"gangEntryPassword\" required placeholder=\"Enter the gang&#39;s entry password\" class=\"input-text\"></div><button type=\"submit\" class=\"btn-primary\">Join Game</button></form><button hx-get=\"/\" hx-target=\"#main-content\" hx-swap=\"outerHTML\" class=\"btn-link mt-4\">← Back to Home</button></div>")
 		if templ_7745c5c3_Err != nil {

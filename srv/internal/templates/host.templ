@@ -1,5 +1,7 @@
 package templates
 
+import "github.com/tristanbatchler/youtube_night/srv/internal/util"
+
 templ avatarOption(label string, emoji string, selected bool) {
 	<label class="flex flex-col items-center cursor-pointer">
 		<input
@@ -40,13 +42,9 @@ templ hostContents() {
 			<div class="text-left">
 				<label class="input-label">Pick an Avatar</label>
 				<div class="flex flex-wrap gap-4">
-					@avatarOption("cat", "🐱", true)
-					@avatarOption("dog", "🐶", false)
-					@avatarOption("dragon", "🐲", false)
-					@avatarOption("alien", "👽", false)
-					@avatarOption("robot", "🤖", false)
-					@avatarOption("ghost", "👻", false)
-					@avatarOption("wizard", "🧙", false)
+					for emoji, text := range util.AvatarEmojis {
+						@avatarOption(text, emoji, false)
+					}
 				</div>
 			</div>
 			<div class="text-left">

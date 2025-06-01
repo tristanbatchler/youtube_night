@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
+	"github.com/tristanbatchler/youtube_night/srv/internal/util"
 	"google.golang.org/api/youtube/v3"
 )
 
@@ -255,7 +256,9 @@ script websocketConnect(gangId int32, userId int32) {
 
 	if (message.type === "game_start") {
 		console.log("Game has started! Moving to game page...");
-		window.location.href = `/game`;
+		
+		// For now, just print the message
+		console.log("Game start message:", message);
 	}
   };
   
@@ -281,7 +284,7 @@ templ lobbyContents(gangName string, name string, avatar string, videos []db.Vid
 				<span class="text-indigo-900 dark:text-indigo-300">Night</span>
 			</h1>
 			<div class="mt-4 sm:mt-0 flex items-center bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-sm">
-				<div class="text-2xl mr-2">{ avatar }</div>
+				<div class="text-2xl mr-2">{ util.AvatarTextToEmoji(avatar) }</div>
 				<span class="font-medium text-gray-700 dark:text-gray-300 mr-2">{ name }</span>
 				// Online indicator (purely aesthetic)
 				<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
