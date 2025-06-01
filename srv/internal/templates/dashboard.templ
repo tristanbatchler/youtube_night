@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"google.golang.org/api/youtube/v3"
 )
@@ -24,6 +25,9 @@ templ videoCard(video db.Video) {
 			}
 			<div class="p-4">
 				<h3 class="font-semibold text-gray-900 dark:text-white line-clamp-1">{ video.Title }</h3>
+				<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">
+					{ video.ChannelName }
+				</p>
 				if video.Description.Valid {
 					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
 						{ video.Description.String }
@@ -50,42 +54,60 @@ templ videoCard(video db.Video) {
 }
 
 templ searchResult(result *youtube.SearchResult) {
-	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-		<div class="flex flex-col sm:flex-row w-full">
-			<!-- Thumbnail - Full width on mobile, fixed width on larger screens -->
-			<div class="w-full sm:w-40 sm:flex-shrink-0">
-				if result.Snippet != nil && result.Snippet.Thumbnails != nil && result.Snippet.Thumbnails.Medium != nil {
+	if result.Snippet != nil && result.Snippet.Thumbnails != nil && (result.Snippet.Thumbnails.Default != nil || result.Snippet.Thumbnails.Maxres != nil) {
+		{{ video := db.Video{VideoID: result.Id.VideoId, Title: result.Snippet.Title} }}
+		{{ video.Description = pgtype.Text{String: result.Snippet.Description, Valid: true} }}
+		{{ video.ThumbnailUrl = pgtype.Text{String: result.Snippet.Thumbnails.Default.Url, Valid: true} }}
+		if result.Snippet.Thumbnails.Maxres != nil {
+			{{ video.ThumbnailUrl.String = result.Snippet.Thumbnails.Maxres.Url }}
+		}
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+			<div class="flex flex-col sm:flex-row w-full">
+				<!-- Thumbnail - Full width on mobile, fixed width on larger screens -->
+				<div class="w-full sm:w-40 sm:flex-shrink-0">
 					<img
-						src={ result.Snippet.Thumbnails.Medium.Url }
+						src={ video.ThumbnailUrl.String }
 						alt="Video Thumbnail"
 						class="w-full h-40 sm:h-full object-cover"
 					/>
-				}
-			</div>
-			<!-- Content area with better spacing -->
-			<div class="flex flex-col justify-between flex-1 p-4 min-w-0">
-				<!-- Title and description with proper truncation -->
-				<div class="mb-4">
-					if result.Snippet != nil {
-						<h4 class="font-medium text-gray-900 dark:text-white line-clamp-1 break-words">{ result.Snippet.Title }</h4>
-						<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2 break-words">{ result.Snippet.Description }</p>
-					}
 				</div>
-				<!-- Button with guaranteed visibility -->
-				<div class="flex justify-end">
-					<button
-						hx-post={ fmt.Sprintf("/videos/submit?videoId=%s", result.Id.VideoId) }
-						hx-target="#main-content"
-						hx-swap="outerHTML"
-						class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
-					>
-						➕
-						Suggest
-					</button>
+				<!-- Content area with better spacing -->
+				<div class="flex flex-col justify-between flex-1 p-4 min-w-0">
+					<!-- Title and description with proper truncation -->
+					<div class="mb-4">
+						if result.Snippet != nil {
+							<h4 class="font-medium text-gray-900 dark:text-white line-clamp-1 break-words">{ video.Title }</h4>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1 break-words">
+								{ result.Snippet.ChannelTitle }
+							</p>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2 break-words">{ video.Description.String }</p>
+						}
+					</div>
+					<!-- Button with form instead of query params -->
+					<div class="flex justify-end">
+						<form
+							hx-post="/videos/submit"
+							hx-target="#videos-container"
+							hx-swap="none"
+						>
+							<input type="hidden" name="videoId" value={ video.VideoID }/>
+							<input type="hidden" name="title" value={ video.Title }/>
+							<input type="hidden" name="channelName" value={ result.Snippet.ChannelTitle }/>
+							<input type="hidden" name="description" value={ video.Description.String }/>
+							<input type="hidden" name="thumbnailUrl" value={ video.ThumbnailUrl.String }/>
+							<button
+								type="submit"
+								class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
+							>
+								➕
+								Suggest
+							</button>
+						</form>
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	}
 }
 
 templ VideoSearchResults(results []*youtube.SearchResult) {
@@ -148,6 +170,32 @@ templ videoSearchForm() {
 		</div>
 		<div id="video-search-results" class="space-y-3 mt-4"></div>
 	</div>
+}
+
+templ noVideosMessage() {
+	<div id="no-videos-message" class="text-gray-600 dark:text-gray-400">
+		<p>You haven't suggested any videos yet. Use the search box to find and suggest videos!</p>
+	</div>
+}
+
+templ videosList(videos []db.Video) {
+	<div id="videos-container">
+		<ul id="videos-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+			for _, video := range videos {
+				@videoCard(video)
+			}
+		</ul>
+		if len(videos) <= 0 {
+			@noVideosMessage()
+		}
+	</div>
+}
+
+templ VideoToAppend(video db.Video) {
+	<li hx-swap-oob="afterbegin:#videos-list">
+		@videoCard(video)
+	</li>
+	<div id="no-videos-message" hx-swap-oob="delete"></div>
 }
 
 templ dashboardContents(gangName string, name string, avatar string, videos []db.Video) {
@@ -213,16 +261,7 @@ templ dashboardContents(gangName string, name string, avatar string, videos []db
 							</span>
 						}
 					</div>
-					// TODO: Maybe only return the video that the user submitted and add it to the list using fancy hx stuff?
-					if len(videos) == 0 {
-						<p class="text-gray-600 dark:text-gray-400">You haven't suggested any videos yet. Use the search box to find and suggest videos!</p>
-					} else {
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							for _, video := range videos {
-								@videoCard(video)
-							}
-						</div>
-					}
+					@videosList(videos)
 				</div>
 			</div>
 			<!-- Sidebar - Right/Bottom Section -->

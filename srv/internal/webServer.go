@@ -548,13 +548,13 @@ func (s *server) searchVideosHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) submitVideoHandler(w http.ResponseWriter, r *http.Request) {
-	// Get the video ID
-	videoId := r.URL.Query().Get("videoId")
-	if videoId == "" {
-		http.Error(w, "Video ID is required", http.StatusBadRequest)
-		return
-	}
-	s.logger.Printf("Submitting video with ID: %s", videoId)
+	// Get the video details
+	video := db.Video{VideoID: r.FormValue("videoId"), Title: r.FormValue("title")}
+	video.Description = pgtype.Text{String: r.FormValue("description"), Valid: true}
+	video.ThumbnailUrl = pgtype.Text{String: r.FormValue("thumbnailUrl"), Valid: true}
+	video.ChannelName = r.FormValue("channelName")
+
+	s.logger.Printf("Submitting video %v", video)
 
 	// Get the session data
 	sessionData, ok := middleware.GetSessionData(r)
@@ -568,13 +568,37 @@ func (s *server) submitVideoHandler(w http.ResponseWriter, r *http.Request) {
 	gangId := sessionData.GangId
 
 	// Add the video submission to the store
-	_, err := s.videoSubmissionStore.SubmitVideo(r.Context(), videoId, userId, gangId)
+	_, err := s.videoSubmissionStore.SubmitVideo(r.Context(), video, userId, gangId)
 	if err != nil {
 		s.logger.Printf("Error submitting video: %v", err)
 		http.Error(w, "Error submitting video", http.StatusInternalServerError)
 		return
 	}
-	s.dashboardHandler(w, r) // Redirect to dashboard after submission
+
+	// Get updated count after submission for the counter
+	videos, err := s.videoSubmissionStore.GetVideosSubmittedByGangIdAndUserId(
+		r.Context(), userId, gangId)
+	if err != nil {
+		s.logger.Printf("Error getting video count: %v", err)
+	}
+
+	// Instead of rendering the entire videos container, just render the VideoToAppend component
+	// and also include an updated counter for the videos count
+	w.WriteHeader(http.StatusOK)
+	videoAppendComponent := templates.VideoToAppend(video)
+	err = videoAppendComponent.Render(r.Context(), w)
+	if err != nil {
+		s.logger.Printf("Error rendering video append template: %v", err)
+	}
+
+	// Also update the video count in the header
+	if len(videos) > 0 {
+		countLabel := "1 video"
+		if len(videos) > 1 {
+			countLabel = fmt.Sprintf("%d videos", len(videos))
+		}
+		fmt.Fprintf(w, `<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300" hx-swap-oob="innerHTML:.bg-blue-100">%s</span>`, countLabel)
+	}
 }
 
 func (s *server) removeVideoHandler(w http.ResponseWriter, r *http.Request) {

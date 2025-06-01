@@ -83,16 +83,16 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const createVideo = `-- name: CreateVideo :one
+const createVideoIfNotExists = `-- name: CreateVideoIfNotExists :exec
 INSERT INTO videos (
     video_id, title, description, thumbnail_url, channel_name
 ) VALUES (
     $1, $2, $3, $4, $5
 )
-RETURNING video_id, title, description, thumbnail_url, channel_name
+ON CONFLICT (video_id) DO NOTHING
 `
 
-type CreateVideoParams struct {
+type CreateVideoIfNotExistsParams struct {
 	VideoID      string
 	Title        string
 	Description  pgtype.Text
@@ -100,23 +100,15 @@ type CreateVideoParams struct {
 	ChannelName  string
 }
 
-func (q *Queries) CreateVideo(ctx context.Context, arg CreateVideoParams) (Video, error) {
-	row := q.db.QueryRow(ctx, createVideo,
+func (q *Queries) CreateVideoIfNotExists(ctx context.Context, arg CreateVideoIfNotExistsParams) error {
+	_, err := q.db.Exec(ctx, createVideoIfNotExists,
 		arg.VideoID,
 		arg.Title,
 		arg.Description,
 		arg.ThumbnailUrl,
 		arg.ChannelName,
 	)
-	var i Video
-	err := row.Scan(
-		&i.VideoID,
-		&i.Title,
-		&i.Description,
-		&i.ThumbnailUrl,
-		&i.ChannelName,
-	)
-	return i, err
+	return err
 }
 
 const createVideoSubmission = `-- name: CreateVideoSubmission :one

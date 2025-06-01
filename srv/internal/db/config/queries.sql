@@ -53,13 +53,13 @@ LIMIT 10;
 SELECT * FROM gangs
 WHERE name = $1;
 
--- name: CreateVideo :one
+-- name: CreateVideoIfNotExists :exec
 INSERT INTO videos (
     video_id, title, description, thumbnail_url, channel_name
 ) VALUES (
     $1, $2, $3, $4, $5
 )
-RETURNING *;
+ON CONFLICT (video_id) DO NOTHING;
 
 -- name: GetVideoByVideoId :one
 SELECT * FROM videos

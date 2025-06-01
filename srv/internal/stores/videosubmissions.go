@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"google.golang.org/api/youtube/v3"
@@ -38,11 +37,11 @@ func NewVideoSubmissionStore(youtubeService *youtube.Service, dbPool *pgxpool.Po
 	}, nil
 }
 
-func (s *VideoSubmissionStore) SubmitVideo(ctx context.Context, videoId string, userId int32, gangId int32) (db.VideoSubmission, error) {
+func (s *VideoSubmissionStore) SubmitVideo(ctx context.Context, video db.Video, userId int32, gangId int32) (db.VideoSubmission, error) {
 	emptySubmission := db.VideoSubmission{}
 
-	if videoId == "" {
-		return emptySubmission, fmt.Errorf("videoId cannot be empty")
+	if video.VideoID == "" || video.Title == "" || !video.ThumbnailUrl.Valid || !video.Description.Valid || video.ChannelName == "" {
+		return emptySubmission, fmt.Errorf("video details are incomplete")
 	}
 	if userId <= 0 {
 		return emptySubmission, fmt.Errorf("userId must be a positive integer")
@@ -51,15 +50,6 @@ func (s *VideoSubmissionStore) SubmitVideo(ctx context.Context, videoId string, 
 		return emptySubmission, fmt.Errorf("gangId must be a positive integer")
 	}
 
-	videoList, err := s.youtubeService.Videos.List([]string{"snippet"}).Id(videoId).Do()
-	if err != nil {
-		return emptySubmission, fmt.Errorf("failed to fetch video details: %w", err)
-	}
-	if len(videoList.Items) == 0 {
-		return emptySubmission, fmt.Errorf("video with ID '%s' not found", videoId)
-	}
-	videoDetails := videoList.Items[0]
-
 	tx, err := s.dbPool.Begin(ctx)
 	if err != nil {
 		return emptySubmission, fmt.Errorf("error starting transaction: %w", err)
@@ -67,17 +57,8 @@ func (s *VideoSubmissionStore) SubmitVideo(ctx context.Context, videoId string, 
 	defer tx.Rollback(ctx)
 
 	qtx := s.queries.WithTx(tx)
-	thumbnail := videoDetails.Snippet.Thumbnails.Maxres
-	if thumbnail == nil || thumbnail.Url == "" {
-		thumbnail = videoDetails.Snippet.Thumbnails.Default
-	}
-	video, err := qtx.CreateVideo(ctx, db.CreateVideoParams{
-		VideoID:      videoId,
-		Title:        videoDetails.Snippet.Title,
-		Description:  pgtype.Text{String: videoDetails.Snippet.Description, Valid: true},
-		ThumbnailUrl: pgtype.Text{String: thumbnail.Url, Valid: true},
-		ChannelName:  videoDetails.Snippet.ChannelTitle,
-	})
+	params := db.CreateVideoIfNotExistsParams(video)
+	err = qtx.CreateVideoIfNotExists(ctx, params)
 	if err != nil {
 		return emptySubmission, fmt.Errorf("error creating video record: %w", err)
 	}
