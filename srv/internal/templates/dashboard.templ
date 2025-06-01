@@ -36,14 +36,12 @@ templ videoCard(video db.Video) {
 			</div>
 		</a>
 		<!-- Unsuggest button overlay -->
-		// TODO: When the video is removed, it should update the number of videos in the "My submissions" section
 		<div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
 			<button
 				type="button"
 				hx-post={ fmt.Sprintf("/videos/remove?videoId=%s", video.VideoID) }
 				hx-target={ fmt.Sprintf("#video-%s", video.VideoID) }
 				hx-swap="outerHTML"
-				hx-confirm="Are you sure you want to remove this video from your suggestions?"
 				class="bg-red-600 hover:bg-red-700 text-white rounded-full p-1 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 cursor-pointer"
 				title="Remove this suggestion"
 			>
@@ -198,6 +196,41 @@ templ VideoToAppend(video db.Video) {
 	<div id="no-videos-message" hx-swap-oob="delete"></div>
 }
 
+templ videoCountBadge(count int) {
+	<span id="videos-count-badge" class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+		if count == 1 {
+			1 video
+		} else {
+			{ count } videos
+		}
+	</span>
+}
+
+templ RemoveVideoResponse(videoId string, videos []db.Video) {
+	<div id={ fmt.Sprintf("video-%s", videoId) } hx-swap-oob="delete"></div>
+	if len(videos) > 0 {
+		<span id="videos-count-badge" hx-swap-oob="outerHTML">
+			@videoCountBadge(len(videos))
+		</span>
+	} else {
+		<span id="videos-count-badge" hx-swap-oob="delete"></span>
+		<div id="no-videos-message" class="text-gray-600 dark:text-gray-400" hx-swap-oob="afterbegin:#videos-container">
+			<p>You haven't suggested any videos yet. Use the search box to find and suggest videos!</p>
+		</div>
+	}
+}
+
+// Update the SubmitVideoResponse template:
+templ SubmitVideoResponse(video db.Video, totalCount int) {
+	<li hx-swap-oob="afterbegin:#videos-list">
+		@videoCard(video)
+	</li>
+	<div id="no-videos-message" hx-swap-oob="delete"></div>
+	<span id="videos-count-badge" hx-swap-oob="outerHTML">
+		@videoCountBadge(totalCount)
+	</span>
+}
+
 templ dashboardContents(gangName string, name string, avatar string, videos []db.Video) {
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
@@ -252,7 +285,7 @@ templ dashboardContents(gangName string, name string, avatar string, videos []db
 					<div class="flex items-center justify-between mb-4">
 						<h2 class="text-xl font-semibold text-gray-900 dark:text-white">My submissions</h2>
 						if len(videos) > 0 {
-							<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+							<span id="videos-count-badge" class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
 								if len(videos) == 1 {
 									1 video
 								} else {

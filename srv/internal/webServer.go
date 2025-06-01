@@ -582,22 +582,11 @@ func (s *server) submitVideoHandler(w http.ResponseWriter, r *http.Request) {
 		s.logger.Printf("Error getting video count: %v", err)
 	}
 
-	// Instead of rendering the entire videos container, just render the VideoToAppend component
-	// and also include an updated counter for the videos count
+	// Use the template component instead of direct HTML generation
 	w.WriteHeader(http.StatusOK)
-	videoAppendComponent := templates.VideoToAppend(video)
-	err = videoAppendComponent.Render(r.Context(), w)
+	err = templates.SubmitVideoResponse(video, len(videos)).Render(r.Context(), w)
 	if err != nil {
-		s.logger.Printf("Error rendering video append template: %v", err)
-	}
-
-	// Also update the video count in the header
-	if len(videos) > 0 {
-		countLabel := "1 video"
-		if len(videos) > 1 {
-			countLabel = fmt.Sprintf("%d videos", len(videos))
-		}
-		fmt.Fprintf(w, `<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300" hx-swap-oob="innerHTML:.bg-blue-100">%s</span>`, countLabel)
+		s.logger.Printf("Error rendering video submit response template: %v", err)
 	}
 }
 
@@ -629,8 +618,21 @@ func (s *server) removeVideoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Respond with no content so that the htmx will replace itself with nothing
-	w.WriteHeader(http.StatusNoContent)
+	// Get the updated video count
+	videos, err := s.videoSubmissionStore.GetVideosSubmittedByGangIdAndUserId(
+		r.Context(), userId, gangId)
+	if err != nil {
+		s.logger.Printf("Error getting updated video count: %v", err)
+	}
+
+	// Use the template component instead of direct HTML generation
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+
+	err = templates.RemoveVideoResponse(videoId, videos).Render(r.Context(), w)
+	if err != nil {
+		s.logger.Printf("Error rendering video remove response template: %v", err)
+	}
 }
 
 func (s *server) sitemapHandler(w http.ResponseWriter, r *http.Request) {
