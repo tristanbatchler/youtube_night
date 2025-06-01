@@ -13,17 +13,20 @@ templ videoCard(video db.Video) {
 		id={ fmt.Sprintf("video-%s", video.VideoID) }
 	>
 		<!-- YouTube link for the video -->
-		<a href={ templ.SafeURL(fmt.Sprintf("https://www.youtube.com/watch?v=%s", video.VideoID)) } target="_blank" rel="noopener noreferrer">
-			if video.ThumbnailUrl.Valid {
-				<div class="aspect-video w-full relative">
-					<img
-						src={ video.ThumbnailUrl.String }
-						alt="Video Thumbnail"
-						class="w-full h-full object-cover"
-					/>
-				</div>
-			}
-			<div class="p-4">
+		<a href={ templ.SafeURL(fmt.Sprintf("https://www.youtube.com/watch?v=%s", video.VideoID)) } target="_blank" rel="noopener noreferrer" class="block">
+			<div class="relative">
+				if video.ThumbnailUrl.Valid {
+					<div class="aspect-video w-full relative">
+						<img
+							src={ video.ThumbnailUrl.String }
+							alt="Video Thumbnail"
+							class="w-full h-full object-cover"
+						/>
+					</div>
+				}
+			</div>
+			<div class="p-4 pb-8">
+				<!-- Added extra padding at bottom for action area -->
 				<h3 class="font-semibold text-gray-900 dark:text-white line-clamp-1">{ video.Title }</h3>
 				<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">
 					{ video.ChannelName }
@@ -35,17 +38,23 @@ templ videoCard(video db.Video) {
 				}
 			</div>
 		</a>
-		<!-- Unsuggest button overlay -->
-		<div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+		<!-- Action bar - always visible but subtle -->
+		<div class="absolute bottom-0 left-0 right-0 p-2 flex justify-between items-center bg-gradient-to-t from-gray-100 dark:from-gray-800 to-transparent">
+			<div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
+				🛜
+				<span>Cast</span>
+			</div>
+			<!-- Unsuggest button - always visible but subtle -->
 			<button
 				type="button"
 				hx-post={ fmt.Sprintf("/videos/remove?videoId=%s", video.VideoID) }
 				hx-target={ fmt.Sprintf("#video-%s", video.VideoID) }
 				hx-swap="outerHTML"
-				class="bg-red-600 hover:bg-red-700 text-white rounded-full p-1 shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 cursor-pointer"
-				title="Remove this suggestion"
+				class="flex items-center text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 focus:outline-none transition-colors cursor-pointer"
+				aria-label="Remove suggestion"
 			>
 				🗑️
+				<span>Remove</span>
 			</button>
 		</div>
 	</div>
