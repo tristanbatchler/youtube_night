@@ -28,7 +28,7 @@ templ header(title string) {
 		<link href="./static/css/style.css" rel="stylesheet"/>
 		<link rel="manifest" href="./static/images/favicons/site.webmanifest"/>
 		<link rel="icon" href="./static/images/favicons/favicon.ico" type="image/x-icon"/>
-		<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,100,1,200&icon_names=contrast,dark_mode,light_mode" rel="stylesheet"/>
+		<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,100,1,200&icon_names=cast,contrast,dark_mode,delete,light_mode" rel="stylesheet"/>
 		<title>{ title }</title>
 		<script>
             window.loadTheme = function() {
@@ -195,11 +195,11 @@ templ noVideosMessage() {
 	</div>
 }
 
-templ videosList(videos []db.Video) {
+templ videosList(videos []db.Video, allowDelete bool, allowCast bool) {
 	<div id="videos-container">
 		<ul id="videos-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
 			for _, video := range videos {
-				@videoCard(video)
+				@videoCard(video, allowDelete, allowCast)
 			}
 		</ul>
 		if len(videos) <= 0 {
@@ -208,12 +208,11 @@ templ videosList(videos []db.Video) {
 	</div>
 }
 
-templ videoCard(video db.Video) {
+templ videoCard(video db.Video, allowDelete bool, allowCast bool) {
 	<div
 		class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative group"
 		id={ fmt.Sprintf("video-%s", video.VideoID) }
 	>
-		<!-- YouTube link for the video -->
 		<a href={ templ.SafeURL(fmt.Sprintf("https://www.youtube.com/watch?v=%s", video.VideoID)) } target="_blank" rel="noopener noreferrer" class="block">
 			<div class="relative">
 				if video.ThumbnailUrl != "" {
@@ -226,8 +225,7 @@ templ videoCard(video db.Video) {
 					</div>
 				}
 			</div>
-			<div class="p-4 pb-8">
-				<!-- Added extra padding at bottom for action area -->
+			<div class="p-4">
 				<h3 class="font-semibold text-gray-900 dark:text-white line-clamp-1">{ video.Title }</h3>
 				<p class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">
 					{ video.ChannelName }
@@ -237,25 +235,33 @@ templ videoCard(video db.Video) {
 				</p>
 			</div>
 		</a>
-		<!-- Action bar - always visible but subtle -->
-		<div class="absolute bottom-0 left-0 right-0 p-2 flex justify-between items-center bg-gradient-to-t from-gray-100 dark:from-gray-800 to-transparent">
-			<div class="flex items-center text-xs text-gray-500 dark:text-gray-400">
-				🛜
-				<span>Cast</span>
+		// Action buttons
+		if allowDelete || allowCast {
+			<div class="absolute top-2 right-2 flex space-x-2">
+				if allowDelete {
+					<button
+						hx-post={ fmt.Sprintf("/videos/remove?videoId=%s", video.VideoID) }
+						hx-target={ fmt.Sprintf("#video-%s", video.VideoID) }
+						hx-swap="outerHTML"
+						class="btn-secondary"
+						title="Delete Video"
+						aria-label="Delete Video"
+					>
+						<span class="material-symbols-outlined text-red-600">delete</span>
+					</button>
+				}
+				if allowCast {
+					<button
+						hx-post={ fmt.Sprintf("/videos/cast?videoId=%s", video.VideoID) }
+						class="btn-secondary"
+						title="Cast Video"
+						aria-label="Cast Video"
+					>
+						<span class="material-symbols-outlined text-blue-600">cast</span>
+					</button>
+				}
 			</div>
-			<!-- Unsuggest button - always visible but subtle -->
-			<button
-				type="button"
-				hx-post={ fmt.Sprintf("/videos/remove?videoId=%s", video.VideoID) }
-				hx-target={ fmt.Sprintf("#video-%s", video.VideoID) }
-				hx-swap="outerHTML"
-				class="flex items-center text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 focus:outline-none transition-colors cursor-pointer"
-				aria-label="Remove suggestion"
-			>
-				🗑️
-				<span>Remove</span>
-			</button>
-		</div>
+		}
 	</div>
 }
 

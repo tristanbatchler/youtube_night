@@ -126,7 +126,7 @@ templ videoSearchForm() {
 
 templ VideoToAppend(video db.Video) {
 	<li hx-swap-oob="afterbegin:#videos-list">
-		@videoCard(video)
+		@videoCard(video, true, false)
 	</li>
 	<div id="no-videos-message" hx-swap-oob="delete"></div>
 }
@@ -147,7 +147,7 @@ templ RemoveVideoResponse(videoId string, videos []db.Video) {
 
 templ SubmitVideoResponse(video db.Video, totalCount int) {
 	<li hx-swap-oob="afterbegin:#videos-list">
-		@videoCard(video)
+		@videoCard(video, true, false)
 	</li>
 	<div id="no-videos-message" hx-swap-oob="delete"></div>
 	<span id="videos-count-badge" hx-swap-oob="outerHTML">
@@ -211,7 +211,7 @@ templ lobbyContents(videos []db.Video, sessionData *stores.SessionData) {
 							@videoCountBadge(len(videos))
 						}
 					</div>
-					@videosList(videos)
+					@videosList(videos, true, false)
 				</div>
 			</div>
 			<!-- Sidebar - Right/Bottom Section -->

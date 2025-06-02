@@ -17,7 +17,7 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 				@videoCountBadge(len(videos))
 			}
 		</div>
-		@videosList(videos)
+		@videosList(videos, false, true)
 	</div>
 }
 

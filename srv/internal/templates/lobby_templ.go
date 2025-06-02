@@ -285,7 +285,7 @@ func VideoToAppend(video db.Video) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = videoCard(video).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = videoCard(video, true, false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -383,7 +383,7 @@ func SubmitVideoResponse(video db.Video, totalCount int) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = videoCard(video).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = videoCard(video, true, false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -474,7 +474,7 @@ func lobbyContents(videos []db.Video, sessionData *stores.SessionData) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = videosList(videos).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = videosList(videos, true, false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
