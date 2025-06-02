@@ -169,7 +169,8 @@ script websocketConnect(gangId int32, userId int32) {
       console.log(`WebSocket connection closed cleanly, code=${event.code}, reason=${event.reason}`);
     } else {
       console.log('WebSocket connection died');
-	  alert("Connection to the game was lost. Please refresh the page to reconnect.");
+	  alert("Connection to the game was lost.");
+	  window.location.href = "/dashboard";
     }
   };
   

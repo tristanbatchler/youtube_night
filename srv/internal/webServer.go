@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"os/signal"
@@ -741,10 +742,23 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.logger.Printf("Starting game for gang ID %d with %d videos", sessionData.GangId, len(allVideos))
-	s.gameStateManager.StartGame(sessionData.GangId, allVideos)
+	numVids := len(allVideos)
+	s.logger.Printf("Starting game for gang ID %d with %d videos", sessionData.GangId, numVids)
 
-	s.logger.Printf("Sending game start message to gang ID %d with %d videos", sessionData.GangId, len(allVideos))
+	// First shuffle the videos so that the game is fair
+	shuffledVideos := make([]db.Video, 0, numVids)
+	seenIndices := make(map[int]struct{})
+	for len(shuffledVideos) < numVids {
+		i := rand.IntN(numVids)
+		if _, seen := seenIndices[i]; !seen {
+			seenIndices[i] = struct{}{}
+			shuffledVideos = append(shuffledVideos, allVideos[i])
+		}
+	}
+
+	s.gameStateManager.StartGame(sessionData.GangId, shuffledVideos)
+
+	s.logger.Printf("Sending game start message to gang ID %d with %d videos", sessionData.GangId, numVids)
 	websocket.SendGameStart(s.wsHub, sessionData.GangId)
 
 	// Return success
@@ -754,7 +768,7 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 		Count   int  `json:"videoCount"`
 	}{
 		Success: true,
-		Count:   len(allVideos),
+		Count:   numVids,
 	}
 
 	json.NewEncoder(w).Encode(response)
