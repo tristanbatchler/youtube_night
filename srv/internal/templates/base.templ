@@ -267,6 +267,9 @@ templ videoCard(video db.Video, allowDelete bool, allowCast bool) {
 
 templ dashboardHeader(sessionData *stores.SessionData) {
 	@websocketConnect(sessionData.GangId, sessionData.UserId)
+	<link rel="stylesheet" href="https://cdn.vidstack.io/player/theme.css"/>
+	<link rel="stylesheet" href="https://cdn.vidstack.io/player/video.css"/>
+	<script src="https://cdn.vidstack.io/player" type="module"></script>
 	<header class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 mb-6 border-b border-gray-200 dark:border-gray-700">
 		<h1 class="text-3xl font-bold tracking-tight">
 			<span class="text-red-900 dark:text-red-300">YouTube</span>

@@ -690,14 +690,14 @@ func dashboardHeader(sessionData *stores.SessionData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<header class=\"flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 mb-6 border-b border-gray-200 dark:border-gray-700\"><h1 class=\"text-3xl font-bold tracking-tight\"><span class=\"text-red-900 dark:text-red-300\">YouTube</span> <span class=\"text-indigo-900 dark:text-indigo-300\">Night</span></h1><div class=\"mt-4 sm:mt-0 flex items-center bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-sm\"><div class=\"text-2xl mr-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<link rel=\"stylesheet\" href=\"https://cdn.vidstack.io/player/theme.css\"><link rel=\"stylesheet\" href=\"https://cdn.vidstack.io/player/video.css\"><script src=\"https://cdn.vidstack.io/player\" type=\"module\"></script><header class=\"flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 mb-6 border-b border-gray-200 dark:border-gray-700\"><h1 class=\"text-3xl font-bold tracking-tight\"><span class=\"text-red-900 dark:text-red-300\">YouTube</span> <span class=\"text-indigo-900 dark:text-indigo-300\">Night</span></h1><div class=\"mt-4 sm:mt-0 flex items-center bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-sm\"><div class=\"text-2xl mr-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(util.AvatarTextToEmoji(sessionData.Avatar))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 276, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 279, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -710,7 +710,7 @@ func dashboardHeader(sessionData *stores.SessionData) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(sessionData.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 277, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 280, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {

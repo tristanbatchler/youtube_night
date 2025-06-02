@@ -1,23 +1,126 @@
 package templates
 
 import (
+	"fmt"
+	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 	"github.com/tristanbatchler/youtube_night/srv/internal/states"
 	"github.com/tristanbatchler/youtube_night/srv/internal/stores"
 )
+
+templ mediaPlayer(video db.Video) {
+	<media-player
+		id="yt-player"
+		title={ video.Title }
+		src={ fmt.Sprintf("youtube/%s", video.VideoID) }
+		autoplay
+		crossorigin
+		playsinline
+	>
+		<media-provider></media-provider>
+		<media-video-layout thumbnails={ video.ThumbnailUrl }></media-video-layout>
+	</media-player>
+}
 
 templ gameContents(gameState *states.GameState, sessionData *stores.SessionData) {
 	{{ videos := gameState.Videos }}
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		@dashboardHeader(sessionData)
-	</div>
-	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
-		<div class="flex items-center justify-between mb-4">
-			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">{ sessionData.GangName }'s top picks</h2>
-			if len(videos) > 0 {
-				@videoCountBadge(len(videos))
-			}
+		<div class="grid grid-cols-1 gap-6">
+			<!-- Main player section -->
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Now Playing</h2>
+					if sessionData.IsHost {
+						<button
+							id="stop-game-btn"
+							class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md shadow transition-colors"
+							hx-post="/game/stop"
+							hx-swap="none"
+						>
+							End Game Session
+						</button>
+					}
+				</div>
+				// Currently playing
+				<div id="current-video-info" class="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+					<h3 id="current-video-title" class="font-medium text-lg text-gray-900 dark:text-white">
+						if len(videos) > 0 {
+							{ videos[0].Title }
+						} else {
+							No videos available
+						}
+					</h3>
+					<p id="current-video-channel" class="text-sm text-gray-600 dark:text-gray-400">
+						if len(videos) > 0 {
+							{ videos[0].ChannelName }
+						}
+					</p>
+				</div>
+				// The actual player
+				<div class="aspect-video w-full bg-black">
+					@mediaPlayer(videos[0])
+				</div>
+				// Video controls (these don't do anything yet, just placeholders)
+				<div class="flex justify-between items-center mt-4">
+					<div class="flex items-center space-x-3">
+						<button id="prev-video" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors">
+							Previous
+						</button>
+						<button id="next-video" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+							Next Video
+						</button>
+					</div>
+					<div class="text-sm text-gray-700 dark:text-gray-300">
+						<span id="current-video-index">1</span>/<span id="total-videos">{ fmt.Sprint(len(videos)) }</span>
+					</div>
+				</div>
+			</div>
+			<!-- Video queue section -->
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Queue</h2>
+					if len(videos) > 0 {
+						@videoCountBadge(len(videos))
+					}
+				</div>
+				<!-- Queue carousel -->
+				<div class="overflow-x-auto pb-2">
+					<div id="video-queue" class="flex space-x-4">
+						for i, video := range videos {
+							<div
+								class="video-queue-item flex-shrink-0 w-64 cursor-pointer bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all"
+								data-video-id={ video.VideoID }
+								data-index={ fmt.Sprint(i) }
+								data-title={ video.Title }
+								data-channel={ video.ChannelName }
+								_="on click
+									set #yt-player's src to 'youtube/' + my.dataset.videoId
+									set #current-video-title's textContent to my.dataset.title
+									set #current-video-channel's textContent to my.dataset.channel
+									set #current-video-index's textContent to my.dataset.index"
+							>
+								<div class="aspect-video bg-gray-200 dark:bg-gray-800 relative">
+									if video.ThumbnailUrl != "" {
+										<img src={ video.ThumbnailUrl } alt="Video thumbnail" class="w-full h-full object-cover"/>
+									}
+									<div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity">
+										<div class="w-12 h-12 rounded-full bg-white bg-opacity-80 flex items-center justify-center">
+											<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+											</svg>
+										</div>
+									</div>
+								</div>
+								<div class="p-2">
+									<h4 class="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">{ video.Title }</h4>
+									<p class="text-xs text-gray-600 dark:text-gray-400">{ video.ChannelName }</p>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			</div>
 		</div>
-		@videosList(videos, false, true)
 	</div>
 }
 
