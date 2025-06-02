@@ -169,36 +169,37 @@ templ lobbyContents(videos []db.Video, sessionData *stores.SessionData) {
 					</div>
 					<div class="bg-opacity-20 rounded-lg p-4">
 						<div class="flex items-center">
-							<div class="mr-4 text-4xl">
-								⌚
-							</div>
-							<div>
-								<h3 class="font-medium">Game status</h3>
-								<div class="flex items-center">
-									<p id="game-status" class="text-lg mr-3">
-										Waiting for host to start...
+							if sessionData.IsHost {
+								<div class="mt-4">
+									<button
+										id="start-game-btn"
+										class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow transition-colors"
+										hx-post="/game/start"
+										hx-swap="none"
+									>
+										Start Game
+									</button>
+									<p class="text-xs mt-1 text-white text-opacity-80">
+										As host, you can start the game when everyone has submitted their videos.
 									</p>
-									<span id="game-status-indicator" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
-										Waiting
-									</span>
 								</div>
-							</div>
+							} else {
+								<div class="mr-4 text-4xl">
+									⌚
+								</div>
+								<div>
+									<h3 class="font-medium">Game status</h3>
+									<div class="flex items-center">
+										<p id="game-status" class="text-lg mr-3">
+											Waiting for host to start...
+										</p>
+										<span id="game-status-indicator" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+											Waiting
+										</span>
+									</div>
+								</div>
+							}
 						</div>
-						if sessionData.IsHost {
-							<div class="mt-4">
-								<button
-									id="start-game-btn"
-									class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow transition-colors"
-									hx-post="/game/start"
-									hx-swap="none"
-								>
-									Start Game
-								</button>
-								<p class="text-xs mt-1 text-white text-opacity-80">
-									As host, you can start the game when everyone has submitted their videos.
-								</p>
-							</div>
-						}
 					</div>
 				</div>
 				<!-- My Submissions Section -->

@@ -23,7 +23,7 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 	</div>
 	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
 		<div class="flex items-center justify-between mb-4">
-			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">My submissions</h2>
+			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">{ sessionData.GangName }'s top picks</h2>
 			if len(videos) > 0 {
 				@videoCountBadge(len(videos))
 			}
