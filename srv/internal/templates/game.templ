@@ -10,17 +10,6 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		@dashboardHeader(sessionData)
 	</div>
-	// Fun "Now playing" animated icon with scrolling (pingponging) text with the gang name
-	<div class="flex items-center justify-center mt-8">
-		<div class="relative">
-			<div class="absolute inset-0 flex items-center justify-center">
-				<span class="text-2xl font-bold text-gray-900 dark:text-white animate-ping">Now playing</span>
-			</div>
-			<div class="flex items-center space-x-4 overflow-hidden">
-				<span class="text-2xl font-bold text-gray-900 dark:text-white animate-marquee">{ sessionData.GangName }</span>
-			</div>
-		</div>
-	</div>
 	<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
 		<div class="flex items-center justify-between mb-4">
 			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">{ sessionData.GangName }'s top picks</h2>

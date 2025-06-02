@@ -1,12 +1,10 @@
 package websocket
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/tristanbatchler/youtube_night/srv/internal/db"
 )
 
 const (
@@ -34,23 +32,11 @@ var upgrader = websocket.Upgrader{
 
 // Message types for WebSocket communication
 const (
-	// Message types
 	GameStartMessage   = "game_start"
 	PlayerJoinMessage  = "player_join"
 	PlayerLeaveMessage = "player_leave"
 	GameStopMessage    = "game_stop"
 )
-
-// Message is the structure of messages sent through WebSockets
-type Message struct {
-	Type    string      `json:"type"`
-	Content interface{} `json:"content"`
-}
-
-// GameStartContent contains data sent when a game starts
-type GameStartContent struct {
-	Videos []db.Video `json:"videos"`
-}
 
 // Connection wraps a WebSocket connection
 type Connection struct {
@@ -154,39 +140,10 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request, userID int32, gan
 	conn.ReadPump(client)
 }
 
-// SendGameStart broadcasts a game start message with all videos to a specific gang
-func SendGameStart(hub *Hub, gangID int32, videos []db.Video) {
-	message := Message{
-		Type: GameStartMessage,
-		Content: GameStartContent{
-			Videos: videos,
-		},
-	}
-
-	// Convert message to JSON
-	jsonMessage, err := json.Marshal(message)
-	if err != nil {
-		hub.logger.Printf("Error marshaling game start message: %v", err)
-		return
-	}
-
-	// Broadcast to the gang
-	hub.BroadcastToGang(gangID, jsonMessage)
+func SendGameStart(hub *Hub, gangID int32) {
+	hub.BroadcastToGang(gangID, []byte(GameStartMessage))
 }
 
-// SendGameStop broadcasts a game stop message to a specific gang
 func SendGameStop(hub *Hub, gangID int32) {
-	message := Message{
-		Type: GameStopMessage,
-	}
-
-	// Convert message to JSON
-	jsonMessage, err := json.Marshal(message)
-	if err != nil {
-		hub.logger.Printf("Error marshaling game stop message: %v", err)
-		return
-	}
-
-	// Broadcast to the gang
-	hub.BroadcastToGang(gangID, jsonMessage)
+	hub.BroadcastToGang(gangID, []byte(GameStopMessage))
 }

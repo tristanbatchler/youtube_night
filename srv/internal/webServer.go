@@ -526,8 +526,6 @@ func (s *server) gameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Why are we sending all videos in the websocket message when we're just going to grab them here anyway?
-	// State should be managed here and the websocket messages should just be kept simple!
 	gameState, exists := s.gameStateManager.GetGameState(sessionData.GangId)
 	if !exists {
 		s.logger.Println("No active game state found")
@@ -747,7 +745,7 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 	s.gameStateManager.StartGame(sessionData.GangId, allVideos)
 
 	s.logger.Printf("Sending game start message to gang ID %d with %d videos", sessionData.GangId, len(allVideos))
-	websocket.SendGameStart(s.wsHub, sessionData.GangId, allVideos)
+	websocket.SendGameStart(s.wsHub, sessionData.GangId)
 
 	// Return success
 	w.WriteHeader(http.StatusOK)

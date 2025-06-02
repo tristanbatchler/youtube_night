@@ -152,13 +152,13 @@ script websocketConnect(gangId int32, userId int32) {
   };
   
   socket.onmessage = function(event) {
-    const message = JSON.parse(event.data);
+    const message = event.data;
     console.log("WebSocket message received:", message);
 
-	if (message.type === "game_start") {
+	if (message === "game_start") {
 		console.log("Game has started! Moving to game page...");
 		window.location.href = "/game"
-	} else if (message.type === "game_stop") {
+	} else if (message === "game_stop") {
 		console.log("Game has stopped! Moving to dashboard...");
 		window.location.href = "/dashboard"
 	}
@@ -169,6 +169,7 @@ script websocketConnect(gangId int32, userId int32) {
       console.log(`WebSocket connection closed cleanly, code=${event.code}, reason=${event.reason}`);
     } else {
       console.log('WebSocket connection died');
+	  alert("Connection to the game was lost. Please refresh the page to reconnect.");
     }
   };
   
