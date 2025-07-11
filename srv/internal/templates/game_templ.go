@@ -166,20 +166,96 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div class=\"flex justify-between items-center mt-4\"><div class=\"flex items-center space-x-3\"><button id=\"prev-video\" class=\"px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors\">Previous</button> <button id=\"next-video\" class=\"px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors\">Next Video</button></div><div class=\"text-sm text-gray-700 dark:text-gray-300\"><span id=\"current-video-index\">1</span>/<span id=\"total-videos\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div class=\"flex justify-between items-center mt-4\"><div class=\"flex items-center space-x-3\"><button id=\"prev-video\" class=\"px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors\" _=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(videos)))
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(`on click
+								set currentIndex to parseInt(#current-video-index.textContent)
+								set totalVideos to parseInt(#total-videos.textContent)
+								
+								if currentIndex <= 1
+									set newIndex to totalVideos
+								else
+									set newIndex to currentIndex - 1
+								end
+								
+								set targetIndex to (newIndex - 1)
+								set targetItem to null
+								
+								// Use a simple loop to find the matching element
+								for item in document.querySelectorAll('.video-queue-item')
+									if parseInt(item.getAttribute('data-index')) === targetIndex
+										set targetItem to item
+									end
+								end
+								
+								if targetItem
+									set #yt-player's src to 'youtube/' + targetItem.dataset.videoId
+									set #current-video-title's textContent to targetItem.dataset.title
+									set #current-video-channel's textContent to targetItem.dataset.channel
+									set #current-video-index's textContent to newIndex
+								end`)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 74, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 94, Col: 12}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span></div></div></div><!-- Video queue section --><div class=\"bg-white dark:bg-gray-800 rounded-lg shadow-md p-6\"><div class=\"flex justify-between items-center mb-4\"><h2 class=\"text-xl font-semibold text-gray-900 dark:text-white\">Queue</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\">Previous</button> <button id=\"next-video\" class=\"px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors\" _=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var9 string
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(`on click
+								set currentIndex to parseInt(#current-video-index.textContent)
+								set totalVideos to parseInt(#total-videos.textContent)
+								
+								if currentIndex >= totalVideos
+									set newIndex to 1
+								else
+									set newIndex to currentIndex + 1
+								end
+								
+								set targetIndex to (newIndex - 1)
+								set targetItem to null
+								
+								// Use a simple loop to find the matching element
+								for item in document.querySelectorAll('.video-queue-item')
+									if parseInt(item.getAttribute('data-index')) === targetIndex
+										set targetItem to item
+									end
+								end
+								
+								if targetItem
+									set #yt-player's src to 'youtube/' + targetItem.dataset.videoId
+									set #current-video-title's textContent to targetItem.dataset.title
+									set #current-video-channel's textContent to targetItem.dataset.channel
+									set #current-video-index's textContent to newIndex
+								end`)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 126, Col: 12}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\">Next Video</button></div><div class=\"text-sm text-gray-700 dark:text-gray-300\"><span id=\"current-video-index\">1</span>/<span id=\"total-videos\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var10 string
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(videos)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 132, Col: 95}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</span></div></div></div><!-- Video queue section --><div class=\"bg-white dark:bg-gray-800 rounded-lg shadow-md p-6\"><div class=\"flex justify-between items-center mb-4\"><h2 class=\"text-xl font-semibold text-gray-900 dark:text-white\">Queue</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -189,118 +265,118 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div><!-- Queue carousel --><div class=\"overflow-x-auto pb-2\"><div id=\"video-queue\" class=\"flex space-x-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</div><!-- Queue carousel --><div class=\"overflow-x-auto pb-2\"><div id=\"video-queue\" class=\"flex space-x-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for i, video := range videos {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"video-queue-item flex-shrink-0 w-64 cursor-pointer bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all\" data-video-id=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(video.VideoID)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 92, Col: 37}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-index=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(i))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 93, Col: 34}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" data-title=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"video-queue-item flex-shrink-0 w-64 cursor-pointer bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all\" data-video-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(video.VideoID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 94, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 150, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" data-channel=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" data-index=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 95, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 151, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" _=\"on click\n\t\t\t\t\t\t\t\t\tset #yt-player&#39;s src to &#39;youtube/&#39; + my.dataset.videoId\n\t\t\t\t\t\t\t\t\tset #current-video-title&#39;s textContent to my.dataset.title\n\t\t\t\t\t\t\t\t\tset #current-video-channel&#39;s textContent to my.dataset.channel\n\t\t\t\t\t\t\t\t\tset #current-video-index&#39;s textContent to my.dataset.index\"><div class=\"aspect-video bg-gray-200 dark:bg-gray-800 relative\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" data-title=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if video.ThumbnailUrl != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<img src=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var13 string
-				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 104, Col: 39}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" alt=\"Video thumbnail\" class=\"w-full h-full object-cover\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
+			var templ_7745c5c3_Var13 string
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 152, Col: 32}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity\"><div class=\"w-12 h-12 rounded-full bg-white bg-opacity-80 flex items-center justify-center\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-6 w-6 text-black\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z\"></path></svg></div></div></div><div class=\"p-2\"><h4 class=\"text-sm font-medium text-gray-900 dark:text-white line-clamp-1\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" data-channel=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 115, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 153, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</h4><p class=\"text-xs text-gray-600 dark:text-gray-400\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" _=\"on click\n\t\t\t\t\t\t\t\t\tset #yt-player&#39;s src to &#39;youtube/&#39; + my.dataset.videoId\n\t\t\t\t\t\t\t\t\tset #current-video-title&#39;s textContent to my.dataset.title\n\t\t\t\t\t\t\t\t\tset #current-video-channel&#39;s textContent to my.dataset.channel\n\t\t\t\t\t\t\t\t\tset #current-video-index&#39;s textContent to my.dataset.index\"><div class=\"aspect-video bg-gray-200 dark:bg-gray-800 relative\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var15 string
-			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 116, Col: 80}
+			if video.ThumbnailUrl != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<img src=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var15 string
+				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 162, Col: 39}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" alt=\"Video thumbnail\" class=\"w-full h-full object-cover\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity\"><div class=\"w-12 h-12 rounded-full bg-white bg-opacity-80 flex items-center justify-center\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-6 w-6 text-black\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z\"></path></svg></div></div></div><div class=\"p-2\"><h4 class=\"text-sm font-medium text-gray-900 dark:text-white line-clamp-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</p></div></div>")
+			var templ_7745c5c3_Var16 string
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 173, Col: 97}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</h4><p class=\"text-xs text-gray-600 dark:text-gray-400\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var17 string
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 174, Col: 80}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div></div></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -324,9 +400,9 @@ func Game(gameState *states.GameState, sessionData *stores.SessionData) templ.Co
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var16 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var16 == nil {
-			templ_7745c5c3_Var16 = templ.NopComponent
+		templ_7745c5c3_Var18 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var18 == nil {
+			templ_7745c5c3_Var18 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = MainContent(gameContents(gameState, sessionData)).Render(ctx, templ_7745c5c3_Buffer)

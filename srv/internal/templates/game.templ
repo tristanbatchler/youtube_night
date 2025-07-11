@@ -60,13 +60,71 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 				<div class="aspect-video w-full bg-black">
 					@mediaPlayer(videos[0])
 				</div>
-				// Video controls (these don't do anything yet, just placeholders)
+				// Video controls
 				<div class="flex justify-between items-center mt-4">
 					<div class="flex items-center space-x-3">
-						<button id="prev-video" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors">
+						<button
+							id="prev-video"
+							class="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors"
+							_={ `on click
+								set currentIndex to parseInt(#current-video-index.textContent)
+								set totalVideos to parseInt(#total-videos.textContent)
+								
+								if currentIndex <= 1
+									set newIndex to totalVideos
+								else
+									set newIndex to currentIndex - 1
+								end
+								
+								set targetIndex to (newIndex - 1)
+								set targetItem to null
+								
+								// Use a simple loop to find the matching element
+								for item in document.querySelectorAll('.video-queue-item')
+									if parseInt(item.getAttribute('data-index')) === targetIndex
+										set targetItem to item
+									end
+								end
+								
+								if targetItem
+									set #yt-player's src to 'youtube/' + targetItem.dataset.videoId
+									set #current-video-title's textContent to targetItem.dataset.title
+									set #current-video-channel's textContent to targetItem.dataset.channel
+									set #current-video-index's textContent to newIndex
+								end` }
+						>
 							Previous
 						</button>
-						<button id="next-video" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+						<button
+							id="next-video"
+							class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+							_={ `on click
+								set currentIndex to parseInt(#current-video-index.textContent)
+								set totalVideos to parseInt(#total-videos.textContent)
+								
+								if currentIndex >= totalVideos
+									set newIndex to 1
+								else
+									set newIndex to currentIndex + 1
+								end
+								
+								set targetIndex to (newIndex - 1)
+								set targetItem to null
+								
+								// Use a simple loop to find the matching element
+								for item in document.querySelectorAll('.video-queue-item')
+									if parseInt(item.getAttribute('data-index')) === targetIndex
+										set targetItem to item
+									end
+								end
+								
+								if targetItem
+									set #yt-player's src to 'youtube/' + targetItem.dataset.videoId
+									set #current-video-title's textContent to targetItem.dataset.title
+									set #current-video-channel's textContent to targetItem.dataset.channel
+									set #current-video-index's textContent to newIndex
+								end` }
+						>
 							Next Video
 						</button>
 					</div>
