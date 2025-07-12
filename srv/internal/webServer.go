@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -120,6 +121,9 @@ func (s *server) Start() error {
 	router.Handle("GET /videos/search", protectedMiddleware(http.HandlerFunc(s.searchVideosHandler)))
 	router.Handle("POST /videos/submit", protectedMiddleware(http.HandlerFunc(s.submitVideoHandler)))
 	router.Handle("POST /videos/remove", protectedMiddleware(http.HandlerFunc(s.removeVideoHandler)))
+
+	// Add this route with the protected middleware
+	router.Handle("GET /game/change-video", protectedMiddleware(http.HandlerFunc(s.changeVideoHandler)))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
@@ -895,4 +899,66 @@ Disallow: /gangs/search
 # Point to sitemap
 Sitemap: %s
 `, sitemapURL)
+}
+
+// changeVideoHandler processes a request to change the currently playing video
+func (s *server) changeVideoHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data to verify permissions
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Only hosts can change videos
+	if !sessionData.IsHost {
+		http.Error(w, "Only hosts can change videos", http.StatusForbidden)
+		return
+	}
+
+	// Get video details from query params
+	videoID := r.URL.Query().Get("videoId")
+	indexStr := r.URL.Query().Get("index")
+
+	if videoID == "" {
+		http.Error(w, "Video ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse index as integer
+	index := 0
+	if indexStr != "" {
+		var err error
+		index, err = strconv.Atoi(indexStr)
+		if err != nil {
+			s.logger.Printf("Error parsing index: %v", err)
+			http.Error(w, "Invalid index", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Get the game state to access video details
+	gameState, exists := s.gameStateManager.GetGameState(sessionData.GangId)
+	if !exists {
+		http.Error(w, "No active game", http.StatusBadRequest)
+		return
+	}
+
+	// Find the video in the game state
+	var title, channel string
+	if index >= 0 && index < len(gameState.Videos) {
+		title = gameState.Videos[index].Title
+		channel = gameState.Videos[index].ChannelName
+	} else {
+		s.logger.Printf("Video index out of range: %d", index)
+		http.Error(w, "Video index out of range", http.StatusBadRequest)
+		return
+	}
+
+	// Broadcast the video change to all clients in the gang
+	websocket.SendVideoChange(s.wsHub, sessionData.GangId, videoID, index, title, channel)
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }

@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -36,6 +37,7 @@ const (
 	PlayerJoinMessage  = "player_join"
 	PlayerLeaveMessage = "player_leave"
 	GameStopMessage    = "game_stop"
+	VideoChangeMessage = "video_change" // New message type for video changes
 )
 
 // Connection wraps a WebSocket connection
@@ -140,10 +142,20 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request, userID int32, gan
 	conn.ReadPump(client)
 }
 
+// SendGameStart sends a game start message to all clients in a gang
 func SendGameStart(hub *Hub, gangID int32) {
 	hub.BroadcastToGang(gangID, []byte(GameStartMessage))
 }
 
+// SendGameStop sends a game stop message to all clients in a gang
 func SendGameStop(hub *Hub, gangID int32) {
 	hub.BroadcastToGang(gangID, []byte(GameStopMessage))
+}
+
+// SendVideoChange notifies all clients in a gang about a video change
+func SendVideoChange(hub *Hub, gangID int32, videoID string, index int, title string, channel string) {
+	// Create a JSON message with the video details
+	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s"}`,
+		VideoChangeMessage, videoID, index, title, channel)
+	hub.BroadcastToGang(gangID, []byte(message))
 }

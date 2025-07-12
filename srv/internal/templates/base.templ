@@ -155,13 +155,38 @@ script websocketConnect(gangId int32, userId int32) {
     const message = event.data;
     console.log("WebSocket message received:", message);
 
-	if (message === "game_start") {
-		console.log("Game has started! Moving to game page...");
-		window.location.href = "/game"
-	} else if (message === "game_stop") {
-		console.log("Game has stopped! Moving to dashboard...");
-		window.location.href = "/dashboard"
-	}
+    if (message === "game_start") {
+        console.log("Game has started! Moving to game page...");
+        window.location.href = "/game";
+    } else if (message === "game_stop") {
+        console.log("Game has stopped! Moving to dashboard...");
+        window.location.href = "/dashboard";
+    } else {
+        // Try to parse as JSON for more complex messages
+        try {
+            const jsonMessage = JSON.parse(message);
+            if (jsonMessage.type === "video_change") {
+                console.log("Video change message received:", jsonMessage);
+                
+                // Update the player with the new video
+                const player = document.querySelector("#yt-player");
+                if (player) {
+                    player.src = "youtube/" + jsonMessage.videoId;
+                    
+                    // Update title and channel info
+                    const titleElement = document.querySelector("#current-video-title");
+                    const channelElement = document.querySelector("#current-video-channel");
+                    const indexElement = document.querySelector("#current-video-index");
+                    
+                    if (titleElement) titleElement.textContent = jsonMessage.title;
+                    if (channelElement) channelElement.textContent = jsonMessage.channel;
+                    if (indexElement) indexElement.textContent = (jsonMessage.index + 1).toString();
+                }
+            }
+        } catch (e) {
+            console.log("Not a JSON message or error parsing:", e);
+        }
+    }
   };
   
   socket.onclose = function(event) {
