@@ -18,11 +18,15 @@ type Client struct {
 
 // CurrentVideo represents the currently playing video for a gang
 type CurrentVideo struct {
-	VideoID   string
-	Index     int
-	Title     string
-	Channel   string
-	StartedAt time.Time
+	VideoID         string
+	Index           int
+	Title           string
+	Channel         string
+	StartedAt       time.Time
+	IsPaused        bool
+	PausedAt        float64   // Timestamp where video was paused
+	LastPause       time.Time // Time when the most recent pause occurred
+	TotalPausedTime float64   // Accumulated time in seconds the video has been paused
 }
 
 // Hub maintains the set of active clients and broadcasts messages
@@ -74,13 +78,30 @@ func (h *Hub) Run() {
 			// Check if there's a video already playing in this gang
 			if currentVideo, exists := h.currentVideos[client.GangID]; exists {
 				// Calculate how long the video has been playing
-				elapsedTime := time.Since(currentVideo.StartedAt).Seconds()
+				var elapsedTime float64
+				if currentVideo.IsPaused {
+					// If the video is paused, use the timestamp where it was paused
+					elapsedTime = currentVideo.PausedAt
+					h.logger.Printf("Video is paused, using PausedAt timestamp: %.2f", elapsedTime)
+				} else {
+					// Calculate elapsed time correctly accounting for paused periods
+					rawElapsed := time.Since(currentVideo.StartedAt).Seconds()
+					// Subtract the total paused time from the raw elapsed time
+					elapsedTime = rawElapsed - currentVideo.TotalPausedTime
+
+					if elapsedTime < 0 {
+						// Safety check to prevent negative timestamps
+						h.logger.Printf("Warning: Calculated negative timestamp (%.2f), resetting to 0", elapsedTime)
+						elapsedTime = 0
+					}
+
+					h.logger.Printf("Video is playing, calculated timestamp: %.2f (raw: %.2f, paused: %.2f)",
+						elapsedTime, rawElapsed, currentVideo.TotalPausedTime)
+				}
 
 				// Use a goroutine to avoid blocking the hub's main loop
 				go func(c *Client, cv *CurrentVideo, timestamp float64) {
 					SendCurrentVideo(h, c, cv.VideoID, cv.Index, cv.Title, cv.Channel, timestamp)
-					h.logger.Printf("Sent current video info to user %d in gang %d, timestamp: %.2f seconds",
-						c.UserID, c.GangID, timestamp)
 				}(client, currentVideo, elapsedTime)
 			} else {
 				h.logger.Printf("No current video for gang %d, user %d connected", client.GangID, client.UserID)
@@ -164,11 +185,60 @@ func (h *Hub) GetHostClientForGang(gangID int32) *Client {
 	return nil
 }
 
+// SetCurrentVideo updates the current video for a gang
 func (h *Hub) SetCurrentVideo(gangID int32, video *CurrentVideo) {
 	h.mu.Lock()
 	if h.currentVideos == nil {
 		h.currentVideos = make(map[int32]*CurrentVideo)
 	}
+
+	// Ensure LastPause is initialized
+	if video.LastPause.IsZero() {
+		video.LastPause = video.StartedAt
+	}
+
+	// Initialize TotalPausedTime to 0 for a new video
+	video.TotalPausedTime = 0
+
 	h.currentVideos[gangID] = video
 	h.mu.Unlock()
+
+	h.logger.Printf("Current video set for gang %d: %s (index: %d, timestamp: 0.0)",
+		gangID, video.VideoID, video.Index)
+}
+
+// UpdatePlaybackState updates the playback state (paused/playing) for a gang
+func (h *Hub) UpdatePlaybackState(gangID int32, isPaused bool, timestamp float64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if h.currentVideos == nil {
+		h.currentVideos = make(map[int32]*CurrentVideo)
+	}
+
+	video, exists := h.currentVideos[gangID]
+	if !exists {
+		h.logger.Printf("Cannot update playback state - no video exists for gang %d", gangID)
+		return
+	}
+
+	// Handle state change
+	if isPaused && !video.IsPaused {
+		// Transitioning from playing to paused
+		video.IsPaused = true
+		video.PausedAt = timestamp
+		video.LastPause = time.Now()
+		h.logger.Printf("Video paused for gang %d at timestamp %.2f", gangID, timestamp)
+	} else if !isPaused && video.IsPaused {
+		// Transitioning from paused to playing
+		video.IsPaused = false
+
+		// Calculate how long this pause lasted
+		pauseDuration := time.Since(video.LastPause).Seconds()
+		// Add it to the total paused time counter
+		video.TotalPausedTime += pauseDuration
+
+		h.logger.Printf("Video resumed for gang %d from timestamp %.2f (pause duration: %.2f, total paused: %.2f)",
+			gangID, timestamp, pauseDuration, video.TotalPausedTime)
+	}
 }

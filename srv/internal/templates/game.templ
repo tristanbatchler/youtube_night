@@ -13,17 +13,72 @@ templ mediaPlayer(video db.Video) {
 		id="yt-player"
 		title={ video.Title }
 		preload
-		poster=""
 		playsinline
 		crossorigin
 		muted
-		load="visible"
+		load="play"
 		autoplay
 		src={ fmt.Sprintf("youtube/%s", video.VideoID) }
 	>
 		<media-provider></media-provider>
 		<media-video-layout thumbnails={ video.ThumbnailUrl }></media-video-layout>
 	</media-player>
+	<script>
+		// Setup event handlers for the video player
+		document.addEventListener('DOMContentLoaded', function() {
+			const player = document.getElementById('yt-player');
+			
+			// For the host, send playback state changes to server
+			if (player) {
+				const isHost = Boolean(document.getElementById('host-controls'));
+				
+				player.addEventListener('play', function() {
+					if (isHost) {
+						const currentTime = player.currentTime || 0;
+						fetch(`/game/playback-state?isPaused=false&timestamp=${currentTime}`);
+					}
+				});
+				
+				player.addEventListener('pause', function() {
+					if (isHost) {
+						const currentTime = player.currentTime || 0;
+						fetch(`/game/playback-state?isPaused=true&timestamp=${currentTime}`);
+					}
+				});
+				
+				// For non-host users, we need to respect the host's control
+				// This is handled in the websocket message handler
+				if (!isHost) {
+					// Block manual resume for non-hosts if host has paused
+					player.addEventListener('play', function(event) {
+						if (player.dataset.hostPaused === 'true') {
+							event.preventDefault();
+							player.pause();
+						}
+					});
+				}
+			}
+		});
+		
+		// Expose a function to seek to a specific time
+		window.seekVideoTo = function(seconds) {
+			const player = document.getElementById('yt-player');
+			if (player) {
+				// Try to seek using the media provider
+				try {
+					const mediaEl = player.querySelector('media-provider');
+					if (mediaEl && mediaEl.media) {
+						mediaEl.media.currentTime = seconds;
+					} else {
+						// Fallback
+						player.currentTime = seconds;
+					}
+				} catch (err) {
+					console.warn("Failed to seek to timestamp:", err);
+				}
+			}
+		}
+	</script>
 }
 
 templ gameContents(gameState *states.GameState, sessionData *stores.SessionData) {
@@ -36,14 +91,16 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 				<div class="flex justify-between items-center mb-4">
 					<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Now Playing</h2>
 					if sessionData.IsHost {
-						<button
-							id="stop-game-btn"
-							class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md shadow transition-colors"
-							hx-post="/game/stop"
-							hx-swap="none"
-						>
-							End Game Session
-						</button>
+						<div id="host-controls" class="flex items-center space-x-2">
+							<button
+								id="stop-game-btn"
+								class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md shadow transition-colors"
+								hx-post="/game/stop"
+								hx-swap="none"
+							>
+								End Game Session
+							</button>
+						</div>
 					}
 				</div>
 				// Currently playing

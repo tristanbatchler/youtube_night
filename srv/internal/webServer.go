@@ -122,6 +122,7 @@ func (s *server) Start() error {
 	router.Handle("POST /videos/submit", protectedMiddleware(http.HandlerFunc(s.submitVideoHandler)))
 	router.Handle("POST /videos/remove", protectedMiddleware(http.HandlerFunc(s.removeVideoHandler)))
 	router.Handle("GET /game/change-video", protectedMiddleware(http.HandlerFunc(s.changeVideoHandler)))
+	router.Handle("GET /game/playback-state", protectedMiddleware(http.HandlerFunc(s.playbackStateHandler))) // New endpoint for playback control
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
@@ -969,6 +970,48 @@ func (s *server) changeVideoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Broadcast the video change to all clients in the gang
 	websocket.SendVideoChange(s.wsHub, sessionData.GangId, videoID, index, title, channel)
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+// playbackStateHandler handles requests to update playback state (pause/play)
+func (s *server) playbackStateHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data to verify permissions
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Only hosts can control global playback
+	if !sessionData.IsHost {
+		http.Error(w, "Only hosts can control global playback", http.StatusForbidden)
+		return
+	}
+
+	// Get the pause state and timestamp from query params
+	isPausedStr := r.URL.Query().Get("isPaused")
+	timestampStr := r.URL.Query().Get("timestamp")
+
+	isPaused := isPausedStr == "true"
+
+	timestamp := 0.0
+	if timestampStr != "" {
+		var err error
+		timestamp, err = strconv.ParseFloat(timestampStr, 64)
+		if err != nil {
+			s.logger.Printf("Error parsing timestamp: %v", err)
+			timestamp = 0.0
+		}
+	}
+
+	// Update playback state in the hub
+	s.wsHub.UpdatePlaybackState(sessionData.GangId, isPaused, timestamp)
+
+	// Broadcast the playback state change to all clients in the gang
+	websocket.SendPlaybackState(s.wsHub, sessionData.GangId, isPaused, timestamp)
 
 	// Return success
 	w.WriteHeader(http.StatusOK)

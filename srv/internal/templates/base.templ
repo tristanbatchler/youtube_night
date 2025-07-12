@@ -173,14 +173,88 @@ script websocketConnect(gangId int32, userId int32) {
             else if (jsonMessage.type === "current_video") {
                 console.log("Current video info received for latecomer:", jsonMessage);
                 
-                // Similar to video_change but includes a timestamp to sync with
+                // Similar to video_change but includes a timestamp and pause state
                 updateVideoPlayer(jsonMessage, jsonMessage.timestamp);
+                
+                // Also apply pause state if needed
+                if (jsonMessage.isPaused) {
+                    setTimeout(() => {
+                        pauseVideo(jsonMessage.timestamp);
+						console.log("Current video is paused at timestamp:", jsonMessage.timestamp);
+                    }, 4000); // TODO: This is a hack to wait for the player to load
+                }
+            }
+            else if (jsonMessage.type === "playback_state") {
+                console.log("Playback state change received:", jsonMessage);
+                handlePlaybackStateChange(jsonMessage);
             }
         } catch (e) {
             console.log("Not a JSON message or error parsing:", e);
         }
     }
   };
+  
+  // Handle playback state changes from host
+  function handlePlaybackStateChange(data) {
+    const player = document.querySelector("#yt-player");
+    if (!player) return;
+    
+    const isHost = Boolean(document.getElementById('host-controls'));
+    if (isHost) return; // Host doesn't need to follow their own commands
+    
+    if (data.isPaused) {
+        // Mark the player as host-paused to prevent manual resume
+        player.dataset.hostPaused = 'true';
+        
+        // Pause at the specified timestamp
+        pauseVideo(data.timestamp);
+    } else {
+        // Host is resuming playback
+        player.dataset.hostPaused = 'false';
+        
+        // Seek to where the host is and play
+        if (player.paused) {
+            try {
+                const mediaEl = player.querySelector('media-provider');
+                if (mediaEl && mediaEl.media) {
+                    mediaEl.media.currentTime = data.timestamp;
+                    mediaEl.media.play().catch(err => {
+                        console.warn("Could not autoplay video:", err);
+                    });
+                } else {
+                    // Fallback
+                    player.currentTime = data.timestamp;
+                    player.play().catch(err => {
+                        console.warn("Could not autoplay video:", err);
+                    });
+                }
+            } catch (err) {
+                console.warn("Error resuming video:", err);
+            }
+        }
+    }
+  }
+  
+  // Pause video at specific timestamp
+  function pauseVideo(timestamp) {
+    const player = document.querySelector("#yt-player");
+    if (!player) return;
+    
+    try {
+        // Set the timestamp first
+        const mediaEl = player.querySelector('media-provider');
+        if (mediaEl && mediaEl.media) {
+            mediaEl.media.currentTime = timestamp;
+            mediaEl.media.pause();
+        } else {
+            // Fallback
+            player.currentTime = timestamp;
+            player.pause();
+        }
+    } catch (err) {
+        console.warn("Error pausing video:", err);
+    }
+  }
   
   // Helper function to update the video player
   function updateVideoPlayer(videoData, startTime) {

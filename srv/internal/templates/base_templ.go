@@ -311,8 +311,8 @@ func searchIndicator() templ.Component {
 
 func websocketConnect(gangId int32, userId int32) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_websocketConnect_9199`,
-		Function: `function __templ_websocketConnect_9199(gangId, userId){// Create WebSocket connection
+		Name: `__templ_websocketConnect_51f8`,
+		Function: `function __templ_websocketConnect_51f8(gangId, userId){// Create WebSocket connection
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = ` + "`" + `${protocol}//${window.location.host}/ws` + "`" + `;
   
@@ -346,14 +346,88 @@ func websocketConnect(gangId int32, userId int32) templ.ComponentScript {
             else if (jsonMessage.type === "current_video") {
                 console.log("Current video info received for latecomer:", jsonMessage);
                 
-                // Similar to video_change but includes a timestamp to sync with
+                // Similar to video_change but includes a timestamp and pause state
                 updateVideoPlayer(jsonMessage, jsonMessage.timestamp);
+                
+                // Also apply pause state if needed
+                if (jsonMessage.isPaused) {
+                    setTimeout(() => {
+                        pauseVideo(jsonMessage.timestamp);
+						console.log("Current video is paused at timestamp:", jsonMessage.timestamp);
+                    }, 4000); // TODO: This is a hack to wait for the player to load
+                }
+            }
+            else if (jsonMessage.type === "playback_state") {
+                console.log("Playback state change received:", jsonMessage);
+                handlePlaybackStateChange(jsonMessage);
             }
         } catch (e) {
             console.log("Not a JSON message or error parsing:", e);
         }
     }
   };
+  
+  // Handle playback state changes from host
+  function handlePlaybackStateChange(data) {
+    const player = document.querySelector("#yt-player");
+    if (!player) return;
+    
+    const isHost = Boolean(document.getElementById('host-controls'));
+    if (isHost) return; // Host doesn't need to follow their own commands
+    
+    if (data.isPaused) {
+        // Mark the player as host-paused to prevent manual resume
+        player.dataset.hostPaused = 'true';
+        
+        // Pause at the specified timestamp
+        pauseVideo(data.timestamp);
+    } else {
+        // Host is resuming playback
+        player.dataset.hostPaused = 'false';
+        
+        // Seek to where the host is and play
+        if (player.paused) {
+            try {
+                const mediaEl = player.querySelector('media-provider');
+                if (mediaEl && mediaEl.media) {
+                    mediaEl.media.currentTime = data.timestamp;
+                    mediaEl.media.play().catch(err => {
+                        console.warn("Could not autoplay video:", err);
+                    });
+                } else {
+                    // Fallback
+                    player.currentTime = data.timestamp;
+                    player.play().catch(err => {
+                        console.warn("Could not autoplay video:", err);
+                    });
+                }
+            } catch (err) {
+                console.warn("Error resuming video:", err);
+            }
+        }
+    }
+  }
+  
+  // Pause video at specific timestamp
+  function pauseVideo(timestamp) {
+    const player = document.querySelector("#yt-player");
+    if (!player) return;
+    
+    try {
+        // Set the timestamp first
+        const mediaEl = player.querySelector('media-provider');
+        if (mediaEl && mediaEl.media) {
+            mediaEl.media.currentTime = timestamp;
+            mediaEl.media.pause();
+        } else {
+            // Fallback
+            player.currentTime = timestamp;
+            player.pause();
+        }
+    } catch (err) {
+        console.warn("Error pausing video:", err);
+    }
+  }
   
   // Helper function to update the video player
   function updateVideoPlayer(videoData, startTime) {
@@ -417,8 +491,8 @@ func websocketConnect(gangId int32, userId int32) templ.ComponentScript {
     console.error(` + "`" + `WebSocket error: ${error.message}` + "`" + `);
   };
 }`,
-		Call:       templ.SafeScript(`__templ_websocketConnect_9199`, gangId, userId),
-		CallInline: templ.SafeScriptInline(`__templ_websocketConnect_9199`, gangId, userId),
+		Call:       templ.SafeScript(`__templ_websocketConnect_51f8`, gangId, userId),
+		CallInline: templ.SafeScriptInline(`__templ_websocketConnect_51f8`, gangId, userId),
 	}
 }
 
@@ -456,7 +530,7 @@ func videoCountBadge(count int) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(count)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 253, Col: 10}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 327, Col: 10}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -581,7 +655,7 @@ func videoCard(video db.Video, allowDelete bool, allowCast bool) templ.Component
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("video-%s", video.VideoID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 280, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 354, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -608,7 +682,7 @@ func videoCard(video db.Video, allowDelete bool, allowCast bool) templ.Component
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 287, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 361, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -626,7 +700,7 @@ func videoCard(video db.Video, allowDelete bool, allowCast bool) templ.Component
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 295, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 369, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -639,7 +713,7 @@ func videoCard(video db.Video, allowDelete bool, allowCast bool) templ.Component
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 297, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 371, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -652,7 +726,7 @@ func videoCard(video db.Video, allowDelete bool, allowCast bool) templ.Component
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(video.Description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 300, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 374, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -675,7 +749,7 @@ func videoCard(video db.Video, allowDelete bool, allowCast bool) templ.Component
 				var templ_7745c5c3_Var22 string
 				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/videos/remove?videoId=%s", video.VideoID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 309, Col: 71}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 383, Col: 71}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 				if templ_7745c5c3_Err != nil {
@@ -688,7 +762,7 @@ func videoCard(video db.Video, allowDelete bool, allowCast bool) templ.Component
 				var templ_7745c5c3_Var23 string
 				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("#video-%s", video.VideoID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 310, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 384, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 				if templ_7745c5c3_Err != nil {
@@ -707,7 +781,7 @@ func videoCard(video db.Video, allowDelete bool, allowCast bool) templ.Component
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/videos/cast?videoId=%s", video.VideoID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 321, Col: 69}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 395, Col: 69}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -763,7 +837,7 @@ func dashboardHeader(sessionData *stores.SessionData) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(util.AvatarTextToEmoji(sessionData.Avatar))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 345, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 419, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -776,7 +850,7 @@ func dashboardHeader(sessionData *stores.SessionData) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(sessionData.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 346, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/base.templ`, Line: 420, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {

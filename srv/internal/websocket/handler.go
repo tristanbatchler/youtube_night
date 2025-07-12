@@ -33,12 +33,13 @@ var upgrader = websocket.Upgrader{
 
 // Message types for WebSocket communication
 const (
-	GameStartMessage    = "game_start"
-	PlayerJoinMessage   = "player_join"
-	PlayerLeaveMessage  = "player_leave"
-	GameStopMessage     = "game_stop"
-	VideoChangeMessage  = "video_change"  // New message type for video changes
-	CurrentVideoMessage = "current_video" // New message type for informing newcomers
+	GameStartMessage     = "game_start"
+	PlayerJoinMessage    = "player_join"
+	PlayerLeaveMessage   = "player_leave"
+	GameStopMessage      = "game_stop"
+	VideoChangeMessage   = "video_change"   // New message type for video changes
+	CurrentVideoMessage  = "current_video"  // New message type for informing newcomers
+	PlaybackStateMessage = "playback_state" // New message type for pause/play events
 )
 
 // Connection wraps a WebSocket connection
@@ -155,19 +156,36 @@ func SendGameStop(hub *Hub, gangID int32) {
 
 // SendCurrentVideo notifies a specific client about the currently playing video
 func SendCurrentVideo(hub *Hub, client *Client, videoID string, index int, title string, channel string, timestamp float64) {
-	// Create a JSON message with the video details and current timestamp
-	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s","timestamp":%f}`,
-		CurrentVideoMessage, videoID, index, title, channel, timestamp)
+	hub.mu.RLock()
+	video := hub.currentVideos[client.GangID]
+	isPaused := false
+	if video != nil {
+		isPaused = video.IsPaused
+	}
+	hub.mu.RUnlock()
+
+	// Create a JSON message with the video details, current timestamp, and pause state
+	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s","timestamp":%f,"isPaused":%t}`,
+		CurrentVideoMessage, videoID, index, title, channel, timestamp, isPaused)
 
 	// Send only to the specific client
 	select {
 	case client.Send <- []byte(message):
 		// Message sent successfully
-		hub.logger.Printf("Sent current video info to user %d in gang %d", client.UserID, client.GangID)
+		hub.logger.Printf("Sent current video info to user %d in gang %d (%s)", client.UserID, client.GangID, message)
 	default:
 		// Failed to send
 		hub.logger.Printf("Failed to send current video info to user %d in gang %d", client.UserID, client.GangID)
 	}
+}
+
+// SendPlaybackState broadcasts playback state changes (pause/play) to all clients in a gang
+func SendPlaybackState(hub *Hub, gangID int32, isPaused bool, timestamp float64) {
+	message := fmt.Sprintf(`{"type":"%s","isPaused":%t,"timestamp":%f}`,
+		PlaybackStateMessage, isPaused, timestamp)
+	hub.BroadcastToGang(gangID, []byte(message))
+	hub.logger.Printf("Broadcast playback state change: isPaused=%t, timestamp=%.2f to gang %d",
+		isPaused, timestamp, gangID)
 }
 
 // SendVideoChange notifies all clients in a gang about a video change
