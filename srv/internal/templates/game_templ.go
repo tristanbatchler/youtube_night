@@ -50,14 +50,14 @@ func mediaPlayer(video db.Video) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" playsline crossorigin muted load=\"visible\" autoplay src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" preload poster=\"\" playsinline crossorigin muted load=\"visible\" autoplay src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("youtube/%s", video.VideoID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 20, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 22, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -70,7 +70,7 @@ func mediaPlayer(video db.Video) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 23, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 25, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -132,7 +132,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(videos[0].Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 51, Col: 24}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 53, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -152,7 +152,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(videos[0].ChannelName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 58, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 60, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -210,7 +210,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 				"	fetch `/game/change-video?videoId=${videoId}&index=${queueIndex}`\n" +
 				"end")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 104, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 106, Col: 14}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -254,7 +254,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 				"	fetch `/game/change-video?videoId=${videoId}&index=${queueIndex}`\n" +
 				"end")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 142, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 144, Col: 14}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -277,7 +277,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(videos)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 153, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 155, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -323,7 +323,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(video.VideoID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 171, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 173, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -336,7 +336,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 172, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 174, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -349,7 +349,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 173, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 175, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -362,7 +362,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 174, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 176, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -390,7 +390,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 					"fetch `/game/change-video?videoId=${my.dataset.videoId}&index=${queueIndex}`",
 				""))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 190, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 192, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -408,7 +408,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 194, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 196, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -432,7 +432,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 207, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 209, Col: 97}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -445,7 +445,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 208, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 210, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {

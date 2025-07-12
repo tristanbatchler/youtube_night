@@ -79,7 +79,11 @@ func (h *Hub) Run() {
 				// Use a goroutine to avoid blocking the hub's main loop
 				go func(c *Client, cv *CurrentVideo, timestamp float64) {
 					SendCurrentVideo(h, c, cv.VideoID, cv.Index, cv.Title, cv.Channel, timestamp)
+					h.logger.Printf("Sent current video info to user %d in gang %d, timestamp: %.2f seconds",
+						c.UserID, c.GangID, timestamp)
 				}(client, currentVideo, elapsedTime)
+			} else {
+				h.logger.Printf("No current video for gang %d, user %d connected", client.GangID, client.UserID)
 			}
 			h.mu.Unlock()
 
@@ -158,4 +162,13 @@ func (h *Hub) GetHostClientForGang(gangID int32) *Client {
 		}
 	}
 	return nil
+}
+
+func (h *Hub) SetCurrentVideo(gangID int32, video *CurrentVideo) {
+	h.mu.Lock()
+	if h.currentVideos == nil {
+		h.currentVideos = make(map[int32]*CurrentVideo)
+	}
+	h.currentVideos[gangID] = video
+	h.mu.Unlock()
 }

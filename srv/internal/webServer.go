@@ -760,6 +760,20 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 
 	s.gameStateManager.StartGame(sessionData.GangId, shuffledVideos)
 
+	// Initialize current video for this gang
+	if len(shuffledVideos) > 0 {
+		// Get the first video which will be displayed initially
+		initialVideo := shuffledVideos[0]
+
+		s.wsHub.SetCurrentVideo(sessionData.GangId, &websocket.CurrentVideo{
+			VideoID:   initialVideo.VideoID,
+			Index:     0, // First video has index 0
+			Title:     initialVideo.Title,
+			Channel:   initialVideo.ChannelName,
+			StartedAt: time.Now(),
+		})
+	}
+
 	s.logger.Printf("Sending game start message to gang ID %d with %d videos", sessionData.GangId, numVids)
 	websocket.SendGameStart(s.wsHub, sessionData.GangId)
 

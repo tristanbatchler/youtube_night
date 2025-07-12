@@ -173,18 +173,13 @@ func SendCurrentVideo(hub *Hub, client *Client, videoID string, index int, title
 // SendVideoChange notifies all clients in a gang about a video change
 func SendVideoChange(hub *Hub, gangID int32, videoID string, index int, title string, channel string) {
 	// Store the current video details for this gang
-	hub.mu.Lock()
-	if hub.currentVideos == nil {
-		hub.currentVideos = make(map[int32]*CurrentVideo)
-	}
-	hub.currentVideos[gangID] = &CurrentVideo{
+	hub.SetCurrentVideo(gangID, &CurrentVideo{
 		VideoID:   videoID,
 		Index:     index,
 		Title:     title,
 		Channel:   channel,
 		StartedAt: time.Now(),
-	}
-	hub.mu.Unlock()
+	})
 
 	// Create a JSON message with the video details
 	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s"}`,
