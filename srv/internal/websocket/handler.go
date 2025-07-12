@@ -33,11 +33,12 @@ var upgrader = websocket.Upgrader{
 
 // Message types for WebSocket communication
 const (
-	GameStartMessage   = "game_start"
-	PlayerJoinMessage  = "player_join"
-	PlayerLeaveMessage = "player_leave"
-	GameStopMessage    = "game_stop"
-	VideoChangeMessage = "video_change" // New message type for video changes
+	GameStartMessage    = "game_start"
+	PlayerJoinMessage   = "player_join"
+	PlayerLeaveMessage  = "player_leave"
+	GameStopMessage     = "game_stop"
+	VideoChangeMessage  = "video_change"  // New message type for video changes
+	CurrentVideoMessage = "current_video" // New message type for informing newcomers
 )
 
 // Connection wraps a WebSocket connection
@@ -152,8 +153,39 @@ func SendGameStop(hub *Hub, gangID int32) {
 	hub.BroadcastToGang(gangID, []byte(GameStopMessage))
 }
 
+// SendCurrentVideo notifies a specific client about the currently playing video
+func SendCurrentVideo(hub *Hub, client *Client, videoID string, index int, title string, channel string, timestamp float64) {
+	// Create a JSON message with the video details and current timestamp
+	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s","timestamp":%f}`,
+		CurrentVideoMessage, videoID, index, title, channel, timestamp)
+
+	// Send only to the specific client
+	select {
+	case client.Send <- []byte(message):
+		// Message sent successfully
+		hub.logger.Printf("Sent current video info to user %d in gang %d", client.UserID, client.GangID)
+	default:
+		// Failed to send
+		hub.logger.Printf("Failed to send current video info to user %d in gang %d", client.UserID, client.GangID)
+	}
+}
+
 // SendVideoChange notifies all clients in a gang about a video change
 func SendVideoChange(hub *Hub, gangID int32, videoID string, index int, title string, channel string) {
+	// Store the current video details for this gang
+	hub.mu.Lock()
+	if hub.currentVideos == nil {
+		hub.currentVideos = make(map[int32]*CurrentVideo)
+	}
+	hub.currentVideos[gangID] = &CurrentVideo{
+		VideoID:   videoID,
+		Index:     index,
+		Title:     title,
+		Channel:   channel,
+		StartedAt: time.Now(),
+	}
+	hub.mu.Unlock()
+
 	// Create a JSON message with the video details
 	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s"}`,
 		VideoChangeMessage, videoID, index, title, channel)

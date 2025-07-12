@@ -3,6 +3,7 @@ package websocket
 import (
 	"log"
 	"sync"
+	"time"
 )
 
 // Client represents a WebSocket client connection
@@ -15,10 +16,22 @@ type Client struct {
 	conn   *Connection
 }
 
+// CurrentVideo represents the currently playing video for a gang
+type CurrentVideo struct {
+	VideoID   string
+	Index     int
+	Title     string
+	Channel   string
+	StartedAt time.Time
+}
+
 // Hub maintains the set of active clients and broadcasts messages
 type Hub struct {
 	// Registered clients by gang ID
 	gangClients map[int32]map[*Client]bool
+
+	// Current video playing for each gang
+	currentVideos map[int32]*CurrentVideo
 
 	// Register requests
 	register chan *Client
@@ -36,10 +49,11 @@ type Hub struct {
 // NewHub creates a new Hub
 func NewHub(logger *log.Logger) *Hub {
 	return &Hub{
-		gangClients: make(map[int32]map[*Client]bool),
-		register:    make(chan *Client),
-		unregister:  make(chan *Client),
-		logger:      logger,
+		gangClients:   make(map[int32]map[*Client]bool),
+		currentVideos: make(map[int32]*CurrentVideo),
+		register:      make(chan *Client),
+		unregister:    make(chan *Client),
+		logger:        logger,
 	}
 }
 
@@ -56,6 +70,17 @@ func (h *Hub) Run() {
 			h.gangClients[client.GangID][client] = true
 			h.logger.Printf("Client registered: user %d in gang %d (host: %t), total clients in gang: %d",
 				client.UserID, client.GangID, client.IsHost, len(h.gangClients[client.GangID]))
+
+			// Check if there's a video already playing in this gang
+			if currentVideo, exists := h.currentVideos[client.GangID]; exists {
+				// Calculate how long the video has been playing
+				elapsedTime := time.Since(currentVideo.StartedAt).Seconds()
+
+				// Use a goroutine to avoid blocking the hub's main loop
+				go func(c *Client, cv *CurrentVideo, timestamp float64) {
+					SendCurrentVideo(h, c, cv.VideoID, cv.Index, cv.Title, cv.Channel, timestamp)
+				}(client, currentVideo, elapsedTime)
+			}
 			h.mu.Unlock()
 
 		case client := <-h.unregister:

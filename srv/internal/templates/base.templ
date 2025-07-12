@@ -165,29 +165,70 @@ script websocketConnect(gangId int32, userId int32) {
         // Try to parse as JSON for more complex messages
         try {
             const jsonMessage = JSON.parse(message);
+            
             if (jsonMessage.type === "video_change") {
                 console.log("Video change message received:", jsonMessage);
+                updateVideoPlayer(jsonMessage);
+            } 
+            else if (jsonMessage.type === "current_video") {
+                console.log("Current video info received for latecomer:", jsonMessage);
                 
-                // Update the player with the new video
-                const player = document.querySelector("#yt-player");
-                if (player) {
-                    player.src = "youtube/" + jsonMessage.videoId;
-                    
-                    // Update title and channel info
-                    const titleElement = document.querySelector("#current-video-title");
-                    const channelElement = document.querySelector("#current-video-channel");
-                    const indexElement = document.querySelector("#current-video-index");
-                    
-                    if (titleElement) titleElement.textContent = jsonMessage.title;
-                    if (channelElement) channelElement.textContent = jsonMessage.channel;
-                    if (indexElement) indexElement.textContent = (jsonMessage.index + 1).toString();
-                }
+                // Similar to video_change but includes a timestamp to sync with
+                updateVideoPlayer(jsonMessage, jsonMessage.timestamp);
             }
         } catch (e) {
             console.log("Not a JSON message or error parsing:", e);
         }
     }
   };
+  
+  // Helper function to update the video player
+  function updateVideoPlayer(videoData, startTime) {
+    const player = document.querySelector("#yt-player");
+    if (player) {
+        // Update the video source
+        const videoSrc = "youtube/" + videoData.videoId;
+        
+        // Only change if it's a different video
+        if (player.src !== videoSrc) {
+            player.src = videoSrc;
+        }
+        
+        // If there's a specific timestamp to start from
+        if (startTime && startTime > 0) {
+            // Wait for the player to load then seek to the timestamp
+            setTimeout(() => {
+                // Try to seek to the specified time
+                try {
+                    const mediaEl = player.querySelector('media-provider');
+                    if (mediaEl && mediaEl.media) {
+                        mediaEl.media.currentTime = startTime;
+                        mediaEl.media.play().catch(err => {
+                            console.warn("Could not autoplay video:", err);
+                        });
+                    } else {
+                        // Fallback
+                        player.currentTime = startTime;
+                        player.play().catch(err => {
+                            console.warn("Could not autoplay video:", err);
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Failed to seek to timestamp:", err);
+                }
+            }, 1000);
+        }
+        
+        // Update UI elements
+        const titleElement = document.querySelector("#current-video-title");
+        const channelElement = document.querySelector("#current-video-channel");
+        const indexElement = document.querySelector("#current-video-index");
+        
+        if (titleElement) titleElement.textContent = videoData.title;
+        if (channelElement) channelElement.textContent = videoData.channel;
+        if (indexElement) indexElement.textContent = (videoData.index + 1).toString();
+    }
+  }
   
   socket.onclose = function(event) {
     if (event.wasClean) {
