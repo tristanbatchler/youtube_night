@@ -121,8 +121,6 @@ func (s *server) Start() error {
 	router.Handle("GET /videos/search", protectedMiddleware(http.HandlerFunc(s.searchVideosHandler)))
 	router.Handle("POST /videos/submit", protectedMiddleware(http.HandlerFunc(s.submitVideoHandler)))
 	router.Handle("POST /videos/remove", protectedMiddleware(http.HandlerFunc(s.removeVideoHandler)))
-
-	// Add this route with the protected middleware
 	router.Handle("GET /game/change-video", protectedMiddleware(http.HandlerFunc(s.changeVideoHandler)))
 
 	s.httpServer = &http.Server{

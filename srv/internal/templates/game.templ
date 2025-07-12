@@ -12,10 +12,10 @@ templ mediaPlayer(video db.Video) {
 	<media-player
 		id="yt-player"
 		title={ video.Title }
-		src={ fmt.Sprintf("youtube/%s", video.VideoID) }
+		playsline=""
+		load="visible"
 		autoplay
-		crossorigin
-		playsinline
+		src={ fmt.Sprintf("youtube/%s", video.VideoID) }
 	>
 		<media-provider></media-provider>
 		<media-video-layout thumbnails={ video.ThumbnailUrl }></media-video-layout>
