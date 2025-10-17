@@ -33,6 +33,11 @@ go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 go install github.com/a-h/templ/cmd/templ@latest
 ```
 
+#### Delve
+```
+go install github.com/go-delve/delve/cmd/dlv@latest
+```
+
 ### Packages
 ```
 go mod tidy
@@ -42,6 +47,7 @@ go mod tidy
 Create a PostgreSQL database named `youtube_night`. Run the following SQL commands on your newly created database to setup a user and grant permissions:
 ```sql
 CREATE USER youtube_night WITH PASSWORD 'your_secure_password';
+CREATE DATABASE youtube_night;
 GRANT CONNECT ON DATABASE youtube_night TO youtube_night;
 ALTER DATABASE youtube_night OWNER TO youtube_night;
 ```
@@ -64,7 +70,7 @@ PG_USER=youtube_night
 PG_PASSWORD=<your_secure_password>
 PG_DATABASE=youtube_night
 WEB_PORT=9000
-SESSION_KEY="<your_generated_session_key>"
+SESSION_TOKEN="<your_generated_session_key>"
 YT_API_KEY=<your_youtube_api_key>
 ```
 
@@ -110,7 +116,7 @@ server {
 
 ## ToDo
  - [x] Add favicons
- - [ ] Abstract emoji/avatar handling/showing
+ - [x] Abstract emoji/avatar handling/showing
  - [ ] Make stores struct to tidy up dependency injection
  - [ ] Design the page and functionality
  - [ ] Implement the page and functionality

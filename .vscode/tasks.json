@@ -5,12 +5,12 @@
         {
             "label": "Build sqlc",
             "type": "shell",
-            "command": "${env:HOME}/go/bin/sqlc generate -f ${workspaceFolder}/srv/internal/db/config/sqlc.yml"
+            "command": "${env:GOPATH}/bin/sqlc generate -f ${workspaceFolder}/srv/internal/db/config/sqlc.yml"
         },
         {
             "label": "Air watch",
             "type": "shell",
-            "command": "${env:HOME}/go/bin/air -c ${workspaceFolder}/.air.toml"
+            "command": "${env:GOPATH}/bin/air -c ${workspaceFolder}/.air.toml"
         },
         {
             "label": "Tailwind watch",
@@ -25,12 +25,12 @@
         {
             "label": "Templ watch",
             "type": "shell",
-            "command": "${env:HOME}/go/bin/templ generate -watch"
+            "command": "${env:GOPATH}/bin/templ generate -watch"
         },
         {
             "label": "Templ build",
             "type": "shell",
-            "command": "${env:HOME}/go/bin/templ generate"
+            "command": "${env:GOPATH}/bin/templ generate"
         },
         {
             "label": "Watch all",

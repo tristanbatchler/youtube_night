@@ -1,14 +1,14 @@
 [build]
   args_bin = []
   bin = "./srv/build/main"
-  cmd = "CFLAGS=0 /usr/local/go/bin/go build -gcflags=all='-N -l' -o ./srv/build/main ./srv/cmd/main.go"
+  cmd = "CFLAGS=0 go build -gcflags=all='-N -l' -o ./srv/build/main ./srv/cmd/main.go"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
   follow_symlink = false
-  full_bin = "~/go/bin/dlv exec ./srv/build/main --listen=127.0.0.1:2345 --headless=true --api-version=2 --accept-multiclient --continue --log --"
+  full_bin = "$GOPATH/bin/dlv exec ./srv/build/main --listen=127.0.0.1:2345 --headless=true --api-version=2 --accept-multiclient --continue --log --"
   include_dir = []
   include_ext = ["go", "tpl", "tmpl", "html"]
   include_file = []
