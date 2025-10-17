@@ -27,36 +27,105 @@ templ mediaPlayer(video db.Video) {
 		// Setup event handlers for the video player
 		document.addEventListener('DOMContentLoaded', function() {
 			const player = document.getElementById('yt-player');
-			
-			// For the host, send playback state changes to server
-			if (player) {
-				const isHost = Boolean(document.getElementById('host-controls'));
-				
-				player.addEventListener('play', function() {
-					if (isHost) {
-						const currentTime = player.currentTime || 0;
-						fetch(`/game/playback-state?isPaused=false&timestamp=${currentTime}`);
-					}
-				});
-				
-				player.addEventListener('pause', function() {
-					if (isHost) {
-						const currentTime = player.currentTime || 0;
-						fetch(`/game/playback-state?isPaused=true&timestamp=${currentTime}`);
-					}
-				});
-				
-				// For non-host users, we need to respect the host's control
-				// This is handled in the websocket message handler
-				if (!isHost) {
-					// Block manual resume for non-hosts if host has paused
-					player.addEventListener('play', function(event) {
-						if (player.dataset.hostPaused === 'true') {
-							event.preventDefault();
-							player.pause();
-						}
-					});
+			if (!player) {
+				return;
+			}
+
+			const isHost = Boolean(document.getElementById('host-controls'));
+			player.dataset.hostPaused = player.dataset.hostPaused || 'false';
+			player.dataset.lastHostTimestamp = player.dataset.lastHostTimestamp || '0';
+
+			const resolveMedia = () => {
+				const provider = player.querySelector('media-provider');
+				if (provider && provider.media) {
+					return provider.media;
 				}
+				return player;
+			};
+
+			const currentHostTime = () => {
+				const media = resolveMedia();
+				if (media && typeof media.currentTime === 'number') {
+					return Math.max(0, media.currentTime);
+				}
+				return Math.max(0, player.currentTime || 0);
+			};
+
+			let lastAction = '';
+			let lastTimestamp = -1;
+			let lastPaused = false;
+			const epsilon = 0.15;
+
+			const sendPlaybackUpdate = (action, pausedState) => {
+				const timestamp = currentHostTime();
+				if (lastAction === action && lastPaused === pausedState && Math.abs(timestamp - lastTimestamp) < epsilon) {
+					return;
+				}
+
+				lastAction = action;
+				lastPaused = pausedState;
+				lastTimestamp = timestamp;
+				player.dataset.lastHostTimestamp = timestamp.toString();
+				player.dataset.hostPaused = pausedState ? 'true' : 'false';
+
+				fetch('/game/playback-state', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ action, timestamp, isPaused: pausedState })
+				}).catch(err => {
+					console.error('Failed to send playback state update:', err);
+				});
+			};
+
+			player.__sendPlaybackUpdate = sendPlaybackUpdate;
+
+			if (isHost) {
+				player.addEventListener('play', () => sendPlaybackUpdate('play', false));
+				player.addEventListener('pause', () => sendPlaybackUpdate('pause', true));
+				player.addEventListener('seeked', () => {
+					const timestamp = currentHostTime();
+					if (Math.abs(timestamp - lastTimestamp) > epsilon) {
+						sendPlaybackUpdate('seek', player.paused);
+					}
+				});
+			} else {
+				const layout = player.querySelector('media-video-layout');
+				if (layout) {
+					layout.style.pointerEvents = 'none';
+				}
+
+				player.addEventListener('keydown', event => {
+					const blockedKeys = [' ', 'k', 'j', 'l'];
+					if (blockedKeys.includes(event.key.toLowerCase())) {
+						event.preventDefault();
+					}
+				});
+
+				player.addEventListener('play', event => {
+					if (player.dataset.hostPaused === 'true') {
+						event.preventDefault();
+						pauseVideo(Number(player.dataset.lastHostTimestamp || 0));
+					}
+				});
+
+				player.addEventListener('pause', event => {
+					if (player.dataset.hostPaused !== 'true') {
+						event.preventDefault();
+						const hostTimestamp = Number(player.dataset.lastHostTimestamp || 0);
+						syncVideoToHost(player, hostTimestamp, true);
+					}
+				});
+
+				player.addEventListener('seeking', event => {
+					const hostTimestamp = Number(player.dataset.lastHostTimestamp || 0);
+					const media = resolveMedia();
+					const current = media && typeof media.currentTime === 'number' ? media.currentTime : player.currentTime;
+					if (Math.abs(Number(current || 0) - hostTimestamp) > 0.25) {
+						event.preventDefault();
+						syncVideoToHost(player, hostTimestamp, player.dataset.hostPaused !== 'true');
+					}
+				});
 			}
 		});
 		
@@ -64,17 +133,14 @@ templ mediaPlayer(video db.Video) {
 		window.seekVideoTo = function(seconds) {
 			const player = document.getElementById('yt-player');
 			if (player) {
-				// Try to seek using the media provider
 				try {
-					const mediaEl = player.querySelector('media-provider');
-					if (mediaEl && mediaEl.media) {
-						mediaEl.media.currentTime = seconds;
-					} else {
-						// Fallback
-						player.currentTime = seconds;
+					setPlayerCurrentTime(player, seconds);
+					if (player.__sendPlaybackUpdate) {
+						const pausedState = player.dataset.hostPaused === 'true';
+						player.__sendPlaybackUpdate('seek', pausedState);
 					}
 				} catch (err) {
-					console.warn("Failed to seek to timestamp:", err);
+					console.warn('Failed to seek to timestamp:', err);
 				}
 			}
 		}
@@ -122,6 +188,73 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 				<div class="aspect-video w-full bg-black">
 					@mediaPlayer(videos[0])
 				</div>
+				<!-- Guessing section - who submitted this video? -->
+				<div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+					<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Who submitted this video?</h3>
+					<!-- Get the current video ID and index -->
+					<div id="current-video-index-container" class="hidden" data-current-index="0"></div>
+					<div id="current-video-id-container" class="hidden" data-video-id={ videos[0].VideoID }></div>
+					<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+						<!-- Show all gang members to pick from, but don't allow voting for yourself -->
+						for _, member := range gameState.GangMembers {
+							if member.ID != sessionData.UserId {
+								<button
+									id={ fmt.Sprintf("guess-user-%d", member.ID) }
+									class="guess-user-btn flex items-center p-2 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+									hx-get={ fmt.Sprintf("/game/submit-guess?videoId=%s&guessedUserId=%d", videos[0].VideoID, member.ID) }
+									hx-target="#current-guess-display"
+									hx-swap="innerHTML"
+									data-user-id={ fmt.Sprint(member.ID) }
+									onclick="window.applyGuessHighlight(this)"
+								>
+									<span class="text-xl mr-2">{ util.AvatarTextToEmoji(member.AvatarPath.String) }</span>
+									<span class="font-medium">{ member.Name }</span>
+								</button>
+							}
+						}
+					</div>
+					<!-- Show the current guess for this video if it exists -->
+					<div
+						id="current-guess-display"
+						class="mt-4 text-gray-700 dark:text-gray-300"
+						hx-get={ fmt.Sprintf("/game/get-current-guess?videoId=%s", videos[0].VideoID) }
+						hx-trigger="load"
+						hx-swap="innerHTML"
+					>
+						@LoadingGuessDisplay()
+					</div>
+					<!-- For the host - reveal panel -->
+					if sessionData.IsHost {
+						<div id="host-reveal-panel" class="mt-6 bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+							<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Host Controls</h3>
+							<div class="flex items-center space-x-4">
+								<!-- Show the actual submitter -->
+								<div
+									id="actual-submitter-display"
+									hx-get={ fmt.Sprintf("/game/get-submitter?videoId=%s", videos[0].VideoID) }
+									hx-trigger="load"
+									hx-swap="outerHTML"
+								>
+									@NoSubmitterDisplay()
+								</div>
+								<!-- Button to reveal guesses -->
+								<button
+									id="reveal-guesses-btn"
+									class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+									hx-get={ fmt.Sprintf("/game/get-guesses?videoId=%s", videos[0].VideoID) }
+									hx-target="#guesses-reveal-area"
+									hx-swap="innerHTML"
+								>
+									Reveal All Guesses
+								</button>
+							</div>
+							<!-- Guesses reveal area, initially hidden -->
+							<div id="guesses-reveal-area" class="mt-3 hidden">
+								<!-- This will be populated via HTMX -->
+							</div>
+						</div>
+					}
+				</div>
 				// Video controls - only visible to host
 				<div class="flex justify-between items-center mt-4">
 					<div class="flex items-center space-x-3">
@@ -157,6 +290,9 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 									"	set #current-video-title's textContent to videoTitle\n" + 
 									"	set #current-video-channel's textContent to videoChannel\n" + 
 									"	set #current-video-index's textContent to newDisplayIndex\n" + 
+
+									// Reset guesses UI
+									"	call resetGuessesUI(videoId, queueIndex)\n" + 
 
 									// Send websocket message to update all clients - pass the queue index (0-based)
 									"	fetch `/game/change-video?videoId=${videoId}&index=${queueIndex}`\n" + 
@@ -195,6 +331,9 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 									"	set #current-video-title's textContent to videoTitle\n" + 
 									"	set #current-video-channel's textContent to videoChannel\n" + 
 									"	set #current-video-index's textContent to newDisplayIndex\n" + 
+
+									// Reset guesses UI
+									"	call resetGuessesUI(videoId, queueIndex)\n" + 
 
 									// Send websocket message to update all clients - pass the queue index (0-based)
 									"	fetch `/game/change-video?videoId=${videoId}&index=${queueIndex}`\n" + 
@@ -244,6 +383,9 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 										"set #current-video-channel's textContent to my.dataset.channel\n" + 
 										"set #current-video-index's textContent to displayIndex\n" + 
 										
+										// Reset guesses UI
+										"call resetGuessesUI(my.dataset.videoId, queueIndex)\n" + 
+										
 										// Send websocket message to update all clients - pass the queue index (0-based)
 										"fetch `/game/change-video?videoId=${my.dataset.videoId}&index=${queueIndex}`",
 									"") }
@@ -273,6 +415,119 @@ templ gameContents(gameState *states.GameState, sessionData *stores.SessionData)
 			</div>
 		</div>
 	</div>
+	<script>
+		const GUESS_HIGHLIGHT_CLASSES = ['ring-2', 'ring-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20'];
+
+		window.applyGuessHighlight = function(button) {
+			const buttons = document.querySelectorAll('.guess-user-btn');
+			buttons.forEach(btn => {
+				btn.classList.remove(...GUESS_HIGHLIGHT_CLASSES);
+			});
+			if (button) {
+				button.classList.add(...GUESS_HIGHLIGHT_CLASSES);
+			}
+		};
+
+		window.highlightGuessByUserId = function(userId) {
+			if (!userId) {
+				window.applyGuessHighlight(null);
+				return;
+			}
+			const button = document.querySelector(`.guess-user-btn[data-user-id="${userId}"]`);
+			if (button) {
+				window.applyGuessHighlight(button);
+			}
+		};
+
+		// Function to reset the guesses UI for a new video
+		function resetGuessesUI(videoId, videoIndex) {
+			// Reset all guess buttons
+			document.querySelectorAll('.guess-user-btn').forEach(btn => {
+				btn.classList.remove(...GUESS_HIGHLIGHT_CLASSES);
+				
+				// Update the hx-get attribute for the buttons
+				const userId = btn.getAttribute('data-user-id') || btn.id.replace('guess-user-', '');
+				btn.setAttribute('hx-get', `/game/submit-guess?videoId=${videoId}&guessedUserId=${userId}`);
+			});
+			window.applyGuessHighlight(null);
+			
+			// Reset host reveal panel if present
+			if (document.getElementById('host-reveal-panel')) {
+				// Update submitter info
+				const submitterDisplay = document.getElementById('actual-submitter-display');
+				submitterDisplay.setAttribute('hx-get', `/game/get-submitter?videoId=${videoId}`);
+				htmx.process(submitterDisplay);
+				
+				// Reset reveal button
+				const revealBtn = document.getElementById('reveal-guesses-btn');
+				revealBtn.setAttribute('hx-get', `/game/get-guesses?videoId=${videoId}`);
+				revealBtn.disabled = false;
+				revealBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+				revealBtn.textContent = 'Reveal All Guesses';
+				
+				// Hide guesses area
+				const revealArea = document.getElementById('guesses-reveal-area');
+				revealArea.classList.add('hidden');
+				revealArea.classList.remove('block');
+				revealArea.innerHTML = '';
+			}
+			
+			// Reset current guess display and trigger a fetch for the new video
+			const display = document.getElementById('current-guess-display');
+			display.innerHTML = '<p>Loading your guess...</p>';
+			display.setAttribute('hx-get', `/game/get-current-guess?videoId=${videoId}`);
+			htmx.process(display);
+		}
+
+		// Update guessing interface when video changes
+		document.addEventListener('DOMContentLoaded', function() {
+			// Watch for video changes via mutations to the player
+			const observer = new MutationObserver(mutations => {
+				// Reset the guessing UI when video source changes
+				const currentVideoIdContainer = document.getElementById('current-video-id-container');
+				const newVideoId = document.querySelector('#yt-player').src.split('/').pop();
+				const indexDisplay = document.getElementById('current-video-index');
+				
+				if (currentVideoIdContainer.getAttribute('data-video-id') !== newVideoId) {
+					// Update the video ID in our container
+					currentVideoIdContainer.setAttribute('data-video-id', newVideoId);
+					
+					// Update video index
+					const videoIndex = parseInt(indexDisplay.textContent) - 1; // Convert 1-based to 0-based
+					document.getElementById('current-video-index-container').setAttribute('data-current-index', videoIndex.toString());
+					
+					// Reset all UI elements for guesses
+					resetGuessesUI(newVideoId, videoIndex);
+				}
+			});
+			
+			// Observe the player for src changes
+			const player = document.querySelector('#yt-player');
+			if (player) {
+				observer.observe(player, { attributes: true, attributeFilter: ['src'] });
+			}
+		});
+
+		document.body.addEventListener('htmx:afterSwap', function(event) {
+			if (event.target && event.target.id === 'current-guess-display') {
+				const container = event.target.querySelector('[data-guess-user-id]');
+				if (container) {
+					window.highlightGuessByUserId(container.getAttribute('data-guess-user-id'));
+				} else {
+					window.applyGuessHighlight(null);
+				}
+			} else if (event.target && event.target.id === 'guesses-reveal-area') {
+				event.target.classList.remove('hidden');
+				event.target.classList.add('block');
+				const revealBtn = document.getElementById('reveal-guesses-btn');
+				if (revealBtn) {
+					revealBtn.disabled = true;
+					revealBtn.classList.add('opacity-50', 'cursor-not-allowed');
+					revealBtn.textContent = 'Guesses Revealed';
+				}
+			}
+		});
+	</script>
 }
 
 templ Game(gameState *states.GameState, sessionData *stores.SessionData) {

@@ -1,0 +1,67 @@
+package templates
+
+import (
+	"fmt"
+
+	"github.com/tristanbatchler/youtube_night/srv/internal/db"
+	"github.com/tristanbatchler/youtube_night/srv/internal/util"
+)
+
+// CurrentGuessDisplay shows the user's current guess for a video
+templ CurrentGuessDisplay(user db.User) {
+	<div class="mt-4 text-gray-700 dark:text-gray-300" data-guess-user-id={ fmt.Sprintf("%d", user.ID) }>
+		<p>Your guess: <span class="font-semibold">{ user.Name }</span> <span class="text-xl">{ util.AvatarTextToEmoji(user.AvatarPath.String) }</span></p>
+	</div>
+}
+
+// NoCurrentGuessDisplay shows when the user hasn't made a guess yet
+templ NoCurrentGuessDisplay() {
+	<div class="mt-4 text-gray-700 dark:text-gray-300">
+		<p>You haven't made a guess for this video yet.</p>
+	</div>
+}
+
+// LoadingGuessDisplay shows while a guess is being loaded
+templ LoadingGuessDisplay() {
+	<div class="mt-4 text-gray-700 dark:text-gray-300">
+		<p>Loading your guess...</p>
+	</div>
+}
+
+// AllGuessesDisplay shows all guesses for a video (for the host)
+templ AllGuessesDisplay(guesses []db.GetAllGuessesForVideoRow) {
+	<div class="mt-3">
+		<h4 class="font-medium text-gray-900 dark:text-white mb-2">Everyone's Guesses:</h4>
+		<div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="guesses-list">
+			for _, guess := range guesses {
+				<div class="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-md shadow-sm">
+					<div class="flex items-center">
+						<span class="text-xl mr-2">{ util.AvatarTextToEmoji(guess.GuesserAvatar.String) }</span>
+						<span>{ guess.GuesserName }</span>
+					</div>
+					<div class="flex items-center">
+						<span>guessed</span>
+						<span class="text-xl mx-1">{ util.AvatarTextToEmoji(guess.GuessedAvatar.String) }</span>
+						<span class="font-medium">{ guess.GuessedName }</span>
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+// SubmitterDisplay shows the submitter of a video (for the host)
+templ SubmitterDisplay(submitter db.GetVideoSubmitterRow) {
+	<div>
+		<p class="text-sm text-gray-600 dark:text-gray-400">Actual submitter:</p>
+		<p class="font-bold flex items-center">
+			<span class="text-xl mr-1">{ util.AvatarTextToEmoji(submitter.AvatarPath.String) }</span>
+			{ submitter.Name }
+		</p>
+	</div>
+}
+
+// NoSubmitterDisplay shows when no submitter info is available
+templ NoSubmitterDisplay() {
+	<p>No submitter info available</p>
+}

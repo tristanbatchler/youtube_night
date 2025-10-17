@@ -10,10 +10,12 @@ import (
 
 // GameState represents the current state of a game for a specific gang
 type GameState struct {
-	GangID        int32
-	StartedAt     time.Time
-	Videos        []db.Video
-	PlayerGuesses map[int32]map[string]int32 // Map of userID -> (videoID -> guessed userID)
+	GangID      int32
+	StartedAt   time.Time
+	Videos      []db.Video
+	GangMembers []db.User
+	Submitters  map[string]int32 // Map of videoID -> submitterID
+	mu          sync.RWMutex     // Mutex for thread-safe access
 }
 
 // GameStateManager manages active games
@@ -32,7 +34,7 @@ func NewGameStateManager(logger *log.Logger) *GameStateManager {
 }
 
 // StartGame marks a gang as having an active game
-func (g *GameStateManager) StartGame(gangID int32, videos []db.Video) bool {
+func (g *GameStateManager) StartGame(gangID int32, videos []db.Video, members []db.User, submitters map[string]int32) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -42,13 +44,15 @@ func (g *GameStateManager) StartGame(gangID int32, videos []db.Video) bool {
 	}
 
 	g.activeGames[gangID] = &GameState{
-		GangID:        gangID,
-		StartedAt:     time.Now(),
-		Videos:        videos,
-		PlayerGuesses: make(map[int32]map[string]int32),
+		GangID:      gangID,
+		StartedAt:   time.Now(),
+		Videos:      videos,
+		GangMembers: members,
+		Submitters:  submitters,
 	}
 
-	g.logger.Printf("Game started for gang %d with %d videos", gangID, len(videos))
+	g.logger.Printf("Game started for gang %d with %d videos and %d members",
+		gangID, len(videos), len(members))
 	return true
 }
 
@@ -76,37 +80,6 @@ func (g *GameStateManager) IsGameActive(gangID int32) bool {
 	return exists
 }
 
-// GetGameVideos returns the videos for an active game
-func (g *GameStateManager) GetGameVideos(gangID int32) ([]db.Video, bool) {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-
-	gameState, exists := g.activeGames[gangID]
-	if !exists {
-		return nil, false
-	}
-
-	return gameState.Videos, true
-}
-
-// RecordGuess records a player's guess for a video
-func (g *GameStateManager) RecordGuess(gangID int32, userID int32, videoID string, guessedUserID int32) bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	gameState, exists := g.activeGames[gangID]
-	if !exists {
-		return false
-	}
-
-	if _, exists := gameState.PlayerGuesses[userID]; !exists {
-		gameState.PlayerGuesses[userID] = make(map[string]int32)
-	}
-
-	gameState.PlayerGuesses[userID][videoID] = guessedUserID
-	return true
-}
-
 // GetGameState returns the complete game state for a gang
 func (g *GameStateManager) GetGameState(gangID int32) (*GameState, bool) {
 	g.mu.RLock()
@@ -120,17 +93,21 @@ func (g *GameStateManager) GetGameState(gangID int32) (*GameState, bool) {
 	return gameState, true
 }
 
-// GetAllGuesses returns all guesses for a specific gang
-func (g *GameStateManager) GetAllGuesses(gangID int32) (map[int32]map[string]int32, bool) {
+// GetSubmitterIDForVideo gets the submitter ID for a video in a gang
+func (g *GameStateManager) GetSubmitterIDForVideo(gangID int32, videoID string) (int32, bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
 	gameState, exists := g.activeGames[gangID]
 	if !exists {
-		return nil, false
+		return -1, false
 	}
 
-	return gameState.PlayerGuesses, true
+	gameState.mu.RLock()
+	defer gameState.mu.RUnlock()
+
+	submitterID, exists := gameState.Submitters[videoID]
+	return submitterID, exists
 }
 
 // GetActiveGamesCount returns the number of active games
@@ -139,4 +116,24 @@ func (g *GameStateManager) GetActiveGamesCount() int {
 	defer g.mu.RUnlock()
 
 	return len(g.activeGames)
+}
+
+// GetVideoSubmitter returns the member who submitted a specific video
+func (gs *GameState) GetVideoSubmitter(videoID string) (*db.User, bool) {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+
+	submitterID, exists := gs.Submitters[videoID]
+	if !exists {
+		return nil, false
+	}
+
+	// Find the member with this ID
+	for i := range gs.GangMembers {
+		if gs.GangMembers[i].ID == submitterID {
+			return &gs.GangMembers[i], true
+		}
+	}
+
+	return nil, false
 }

@@ -76,7 +76,7 @@ func mediaPlayer(video db.Video) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"></media-video-layout></media-player><script>\n\t\t// Setup event handlers for the video player\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\tconst player = document.getElementById('yt-player');\n\t\t\t\n\t\t\t// For the host, send playback state changes to server\n\t\t\tif (player) {\n\t\t\t\tconst isHost = Boolean(document.getElementById('host-controls'));\n\t\t\t\t\n\t\t\t\tplayer.addEventListener('play', function() {\n\t\t\t\t\tif (isHost) {\n\t\t\t\t\t\tconst currentTime = player.currentTime || 0;\n\t\t\t\t\t\tfetch(`/game/playback-state?isPaused=false&timestamp=${currentTime}`);\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t\t\n\t\t\t\tplayer.addEventListener('pause', function() {\n\t\t\t\t\tif (isHost) {\n\t\t\t\t\t\tconst currentTime = player.currentTime || 0;\n\t\t\t\t\t\tfetch(`/game/playback-state?isPaused=true&timestamp=${currentTime}`);\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t\t\n\t\t\t\t// For non-host users, we need to respect the host's control\n\t\t\t\t// This is handled in the websocket message handler\n\t\t\t\tif (!isHost) {\n\t\t\t\t\t// Block manual resume for non-hosts if host has paused\n\t\t\t\t\tplayer.addEventListener('play', function(event) {\n\t\t\t\t\t\tif (player.dataset.hostPaused === 'true') {\n\t\t\t\t\t\t\tevent.preventDefault();\n\t\t\t\t\t\t\tplayer.pause();\n\t\t\t\t\t\t}\n\t\t\t\t\t});\n\t\t\t\t}\n\t\t\t}\n\t\t});\n\t\t\n\t\t// Expose a function to seek to a specific time\n\t\twindow.seekVideoTo = function(seconds) {\n\t\t\tconst player = document.getElementById('yt-player');\n\t\t\tif (player) {\n\t\t\t\t// Try to seek using the media provider\n\t\t\t\ttry {\n\t\t\t\t\tconst mediaEl = player.querySelector('media-provider');\n\t\t\t\t\tif (mediaEl && mediaEl.media) {\n\t\t\t\t\t\tmediaEl.media.currentTime = seconds;\n\t\t\t\t\t} else {\n\t\t\t\t\t\t// Fallback\n\t\t\t\t\t\tplayer.currentTime = seconds;\n\t\t\t\t\t}\n\t\t\t\t} catch (err) {\n\t\t\t\t\tconsole.warn(\"Failed to seek to timestamp:\", err);\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"></media-video-layout></media-player><script>\n\t\t// Setup event handlers for the video player\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\tconst player = document.getElementById('yt-player');\n\t\t\tif (!player) {\n\t\t\t\treturn;\n\t\t\t}\n\n\t\t\tconst isHost = Boolean(document.getElementById('host-controls'));\n\t\t\tplayer.dataset.hostPaused = player.dataset.hostPaused || 'false';\n\t\t\tplayer.dataset.lastHostTimestamp = player.dataset.lastHostTimestamp || '0';\n\n\t\t\tconst resolveMedia = () => {\n\t\t\t\tconst provider = player.querySelector('media-provider');\n\t\t\t\tif (provider && provider.media) {\n\t\t\t\t\treturn provider.media;\n\t\t\t\t}\n\t\t\t\treturn player;\n\t\t\t};\n\n\t\t\tconst currentHostTime = () => {\n\t\t\t\tconst media = resolveMedia();\n\t\t\t\tif (media && typeof media.currentTime === 'number') {\n\t\t\t\t\treturn Math.max(0, media.currentTime);\n\t\t\t\t}\n\t\t\t\treturn Math.max(0, player.currentTime || 0);\n\t\t\t};\n\n\t\t\tlet lastAction = '';\n\t\t\tlet lastTimestamp = -1;\n\t\t\tlet lastPaused = false;\n\t\t\tconst epsilon = 0.15;\n\n\t\t\tconst sendPlaybackUpdate = (action, pausedState) => {\n\t\t\t\tconst timestamp = currentHostTime();\n\t\t\t\tif (lastAction === action && lastPaused === pausedState && Math.abs(timestamp - lastTimestamp) < epsilon) {\n\t\t\t\t\treturn;\n\t\t\t\t}\n\n\t\t\t\tlastAction = action;\n\t\t\t\tlastPaused = pausedState;\n\t\t\t\tlastTimestamp = timestamp;\n\t\t\t\tplayer.dataset.lastHostTimestamp = timestamp.toString();\n\t\t\t\tplayer.dataset.hostPaused = pausedState ? 'true' : 'false';\n\n\t\t\t\tfetch('/game/playback-state', {\n\t\t\t\t\tmethod: 'POST',\n\t\t\t\t\tcredentials: 'same-origin',\n\t\t\t\t\theaders: { 'Content-Type': 'application/json' },\n\t\t\t\t\tbody: JSON.stringify({ action, timestamp, isPaused: pausedState })\n\t\t\t\t}).catch(err => {\n\t\t\t\t\tconsole.error('Failed to send playback state update:', err);\n\t\t\t\t});\n\t\t\t};\n\n\t\t\tplayer.__sendPlaybackUpdate = sendPlaybackUpdate;\n\n\t\t\tif (isHost) {\n\t\t\t\tplayer.addEventListener('play', () => sendPlaybackUpdate('play', false));\n\t\t\t\tplayer.addEventListener('pause', () => sendPlaybackUpdate('pause', true));\n\t\t\t\tplayer.addEventListener('seeked', () => {\n\t\t\t\t\tconst timestamp = currentHostTime();\n\t\t\t\t\tif (Math.abs(timestamp - lastTimestamp) > epsilon) {\n\t\t\t\t\t\tsendPlaybackUpdate('seek', player.paused);\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t} else {\n\t\t\t\tconst layout = player.querySelector('media-video-layout');\n\t\t\t\tif (layout) {\n\t\t\t\t\tlayout.style.pointerEvents = 'none';\n\t\t\t\t}\n\n\t\t\t\tplayer.addEventListener('keydown', event => {\n\t\t\t\t\tconst blockedKeys = [' ', 'k', 'j', 'l'];\n\t\t\t\t\tif (blockedKeys.includes(event.key.toLowerCase())) {\n\t\t\t\t\t\tevent.preventDefault();\n\t\t\t\t\t}\n\t\t\t\t});\n\n\t\t\t\tplayer.addEventListener('play', event => {\n\t\t\t\t\tif (player.dataset.hostPaused === 'true') {\n\t\t\t\t\t\tevent.preventDefault();\n\t\t\t\t\t\tpauseVideo(Number(player.dataset.lastHostTimestamp || 0));\n\t\t\t\t\t}\n\t\t\t\t});\n\n\t\t\t\tplayer.addEventListener('pause', event => {\n\t\t\t\t\tif (player.dataset.hostPaused !== 'true') {\n\t\t\t\t\t\tevent.preventDefault();\n\t\t\t\t\t\tconst hostTimestamp = Number(player.dataset.lastHostTimestamp || 0);\n\t\t\t\t\t\tsyncVideoToHost(player, hostTimestamp, true);\n\t\t\t\t\t}\n\t\t\t\t});\n\n\t\t\t\tplayer.addEventListener('seeking', event => {\n\t\t\t\t\tconst hostTimestamp = Number(player.dataset.lastHostTimestamp || 0);\n\t\t\t\t\tconst media = resolveMedia();\n\t\t\t\t\tconst current = media && typeof media.currentTime === 'number' ? media.currentTime : player.currentTime;\n\t\t\t\t\tif (Math.abs(Number(current || 0) - hostTimestamp) > 0.25) {\n\t\t\t\t\t\tevent.preventDefault();\n\t\t\t\t\t\tsyncVideoToHost(player, hostTimestamp, player.dataset.hostPaused !== 'true');\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t}\n\t\t});\n\t\t\n\t\t// Expose a function to seek to a specific time\n\t\twindow.seekVideoTo = function(seconds) {\n\t\t\tconst player = document.getElementById('yt-player');\n\t\t\tif (player) {\n\t\t\t\ttry {\n\t\t\t\t\tsetPlayerCurrentTime(player, seconds);\n\t\t\t\t\tif (player.__sendPlaybackUpdate) {\n\t\t\t\t\t\tconst pausedState = player.dataset.hostPaused === 'true';\n\t\t\t\t\t\tplayer.__sendPlaybackUpdate('seek', pausedState);\n\t\t\t\t\t}\n\t\t\t\t} catch (err) {\n\t\t\t\t\tconsole.warn('Failed to seek to timestamp:', err);\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -132,7 +132,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(videos[0].Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 110, Col: 24}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 176, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -152,7 +152,7 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(videos[0].ChannelName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 117, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 183, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -167,17 +167,172 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div class=\"flex justify-between items-center mt-4\"><div class=\"flex items-center space-x-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><!-- Guessing section - who submitted this video? --><div class=\"mt-6 border-t border-gray-200 dark:border-gray-700 pt-4\"><h3 class=\"text-lg font-medium text-gray-900 dark:text-white mb-3\">Who submitted this video?</h3><!-- Get the current video ID and index --><div id=\"current-video-index-container\" class=\"hidden\" data-current-index=\"0\"></div><div id=\"current-video-id-container\" class=\"hidden\" data-video-id=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var8 string
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(videos[0].VideoID)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 196, Col: 90}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\"></div><div class=\"grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2\"><!-- Show all gang members to pick from, but don't allow voting for yourself -->")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for _, member := range gameState.GangMembers {
+			if member.ID != sessionData.UserId {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<button id=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var9 string
+				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("guess-user-%d", member.ID))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 202, Col: 53}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" class=\"guess-user-btn flex items-center p-2 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors\" hx-get=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var10 string
+				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/game/submit-guess?videoId=%s&guessedUserId=%d", videos[0].VideoID, member.ID))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 204, Col: 109}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" hx-target=\"#current-guess-display\" hx-swap=\"innerHTML\" data-user-id=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var11 string
+				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(member.ID))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 207, Col: 45}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" onclick=\"window.applyGuessHighlight(this)\"><span class=\"text-xl mr-2\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var12 string
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(util.AvatarTextToEmoji(member.AvatarPath.String))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 210, Col: 86}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</span> <span class=\"font-medium\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var13 string
+				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(member.Name)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 211, Col: 48}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</span></button>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</div><!-- Show the current guess for this video if it exists --><div id=\"current-guess-display\" class=\"mt-4 text-gray-700 dark:text-gray-300\" hx-get=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var14 string
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/game/get-current-guess?videoId=%s", videos[0].VideoID))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 220, Col: 83}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" hx-trigger=\"load\" hx-swap=\"innerHTML\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = LoadingGuessDisplay().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div><!-- For the host - reveal panel -->")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if sessionData.IsHost {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<button id=\"prev-video\" class=\"px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors\" _=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div id=\"host-reveal-panel\" class=\"mt-6 bg-gray-100 dark:bg-gray-700 p-4 rounded-lg\"><h3 class=\"text-lg font-medium text-gray-900 dark:text-white mb-2\">Host Controls</h3><div class=\"flex items-center space-x-4\"><!-- Show the actual submitter --><div id=\"actual-submitter-display\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs("on click\n" +
+			var templ_7745c5c3_Var15 string
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/game/get-submitter?videoId=%s", videos[0].VideoID))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 234, Col: 82}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" hx-trigger=\"load\" hx-swap=\"outerHTML\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = NoSubmitterDisplay().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div><!-- Button to reveal guesses --><button id=\"reveal-guesses-btn\" class=\"px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors\" hx-get=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var16 string
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/game/get-guesses?videoId=%s", videos[0].VideoID))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 244, Col: 80}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" hx-target=\"#guesses-reveal-area\" hx-swap=\"innerHTML\">Reveal All Guesses</button></div><!-- Guesses reveal area, initially hidden --><div id=\"guesses-reveal-area\" class=\"mt-3 hidden\"><!-- This will be populated via HTMX --></div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div><div class=\"flex justify-between items-center mt-4\"><div class=\"flex items-center space-x-3\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if sessionData.IsHost {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<button id=\"prev-video\" class=\"px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors\" _=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var17 string
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs("on click\n" +
 				// Get the current index (1-based for display)
 				"set displayIndex to parseInt(#current-video-index.textContent)\n" +
 				"set totalVideos to parseInt(#total-videos.textContent)\n" +
@@ -206,22 +361,25 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 				"	set #current-video-channel's textContent to videoChannel\n" +
 				"	set #current-video-index's textContent to newDisplayIndex\n" +
 
+				// Reset guesses UI
+				"	call resetGuessesUI(videoId, queueIndex)\n" +
+
 				// Send websocket message to update all clients - pass the queue index (0-based)
 				"	fetch `/game/change-video?videoId=${videoId}&index=${queueIndex}`\n" +
 				"end")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 163, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 299, Col: 14}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\">Previous</button> <button id=\"next-video\" class=\"px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors\" _=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\">Previous</button> <button id=\"next-video\" class=\"px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors\" _=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs("on click\n" +
+			var templ_7745c5c3_Var18 string
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs("on click\n" +
 				// Get the current index (1-based for display)
 				"set displayIndex to parseInt(#current-video-index.textContent)\n" +
 				"set totalVideos to parseInt(#total-videos.textContent)\n" +
@@ -250,40 +408,43 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 				"	set #current-video-channel's textContent to videoChannel\n" +
 				"	set #current-video-index's textContent to newDisplayIndex\n" +
 
+				// Reset guesses UI
+				"	call resetGuessesUI(videoId, queueIndex)\n" +
+
 				// Send websocket message to update all clients - pass the queue index (0-based)
 				"	fetch `/game/change-video?videoId=${videoId}&index=${queueIndex}`\n" +
 				"end")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 201, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 340, Col: 14}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\">Next Video</button>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\">Next Video</button>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"text-sm italic text-gray-500 dark:text-gray-400\">Only the host can navigate videos</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"text-sm italic text-gray-500 dark:text-gray-400\">Only the host can navigate videos</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</div><div class=\"text-sm text-gray-700 dark:text-gray-300\"><span id=\"current-video-index\">1</span>/<span id=\"total-videos\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</div><div class=\"text-sm text-gray-700 dark:text-gray-300\"><span id=\"current-video-index\">1</span>/<span id=\"total-videos\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(videos)))
+		var templ_7745c5c3_Var19 string
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(videos)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 212, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 351, Col: 95}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</span></div></div></div><!-- Video queue section --><div class=\"bg-white dark:bg-gray-800 rounded-lg shadow-md p-6\"><div class=\"flex justify-between items-center mb-4\"><h2 class=\"text-xl font-semibold text-gray-900 dark:text-white\">Queue</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</span></div></div></div><!-- Video queue section --><div class=\"bg-white dark:bg-gray-800 rounded-lg shadow-md p-6\"><div class=\"flex justify-between items-center mb-4\"><h2 class=\"text-xl font-semibold text-gray-900 dark:text-white\">Queue</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -293,87 +454,87 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div><!-- Queue carousel --><div class=\"overflow-x-auto pb-2\"><div id=\"video-queue\" class=\"flex space-x-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</div><!-- Queue carousel --><div class=\"overflow-x-auto pb-2\"><div id=\"video-queue\" class=\"flex space-x-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for i, video := range videos {
-			var templ_7745c5c3_Var11 = []any{fmt.Sprintf("video-queue-item flex-shrink-0 w-64 bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden %s", util.If(sessionData.IsHost, "cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all", ""))}
-			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var11...)
+			var templ_7745c5c3_Var20 = []any{fmt.Sprintf("video-queue-item flex-shrink-0 w-64 bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden %s", util.If(sessionData.IsHost, "cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all", ""))}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var20...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var11).String())
+			var templ_7745c5c3_Var21 string
+			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var20).String())
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 1, Col: 0}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" data-video-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" data-video-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(video.VideoID)
+			var templ_7745c5c3_Var22 string
+			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(video.VideoID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 230, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 369, Col: 37}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" data-index=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(i))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 231, Col: 34}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" data-index=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" data-title=\"")
+			var templ_7745c5c3_Var23 string
+			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(i))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 370, Col: 34}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var15 string
-			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 232, Col: 32}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" data-title=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" data-channel=\"")
+			var templ_7745c5c3_Var24 string
+			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 371, Col: 32}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var16 string
-			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 233, Col: 40}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" data-channel=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" _=\"")
+			var templ_7745c5c3_Var25 string
+			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 372, Col: 40}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var17 string
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(util.If(sessionData.IsHost,
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" _=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var26 string
+			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(util.If(sessionData.IsHost,
 				"on click\n"+
 					// Set queue index (0-based) from the clicked item
 					"set queueIndex to my.dataset.index\n"+
@@ -386,77 +547,80 @@ func gameContents(gameState *states.GameState, sessionData *stores.SessionData) 
 					"set #current-video-channel's textContent to my.dataset.channel\n"+
 					"set #current-video-index's textContent to displayIndex\n"+
 
+					// Reset guesses UI
+					"call resetGuessesUI(my.dataset.videoId, queueIndex)\n"+
+
 					// Send websocket message to update all clients - pass the queue index (0-based)
 					"fetch `/game/change-video?videoId=${my.dataset.videoId}&index=${queueIndex}`",
 				""))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 249, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 391, Col: 12}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\"><div class=\"aspect-video bg-gray-200 dark:bg-gray-800 relative\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\"><div class=\"aspect-video bg-gray-200 dark:bg-gray-800 relative\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if video.ThumbnailUrl != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<img src=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<img src=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var18 string
-				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl)
+				var templ_7745c5c3_Var27 string
+				templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(video.ThumbnailUrl)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 253, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 395, Col: 39}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" alt=\"Video thumbnail\" class=\"w-full h-full object-cover\"> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\" alt=\"Video thumbnail\" class=\"w-full h-full object-cover\"> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 			if sessionData.IsHost {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity\"><div class=\"w-12 h-12 rounded-full bg-white bg-opacity-80 flex items-center justify-center\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-6 w-6 text-black\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z\"></path></svg></div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<div class=\"absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity\"><div class=\"w-12 h-12 rounded-full bg-white bg-opacity-80 flex items-center justify-center\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-6 w-6 text-black\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z\"></path></svg></div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</div><div class=\"p-2\"><h4 class=\"text-sm font-medium text-gray-900 dark:text-white line-clamp-1\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</div><div class=\"p-2\"><h4 class=\"text-sm font-medium text-gray-900 dark:text-white line-clamp-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var19 string
-			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
+			var templ_7745c5c3_Var28 string
+			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(video.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 266, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 408, Col: 97}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</h4><p class=\"text-xs text-gray-600 dark:text-gray-400\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var20 string
-			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 267, Col: 80}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</h4><p class=\"text-xs text-gray-600 dark:text-gray-400\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</p></div></div>")
+			var templ_7745c5c3_Var29 string
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(video.ChannelName)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `srv/internal/templates/game.templ`, Line: 409, Col: 80}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</div></div></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</div></div></div></div></div><script>\n\t\tconst GUESS_HIGHLIGHT_CLASSES = ['ring-2', 'ring-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20'];\n\n\t\twindow.applyGuessHighlight = function(button) {\n\t\t\tconst buttons = document.querySelectorAll('.guess-user-btn');\n\t\t\tbuttons.forEach(btn => {\n\t\t\t\tbtn.classList.remove(...GUESS_HIGHLIGHT_CLASSES);\n\t\t\t});\n\t\t\tif (button) {\n\t\t\t\tbutton.classList.add(...GUESS_HIGHLIGHT_CLASSES);\n\t\t\t}\n\t\t};\n\n\t\twindow.highlightGuessByUserId = function(userId) {\n\t\t\tif (!userId) {\n\t\t\t\twindow.applyGuessHighlight(null);\n\t\t\t\treturn;\n\t\t\t}\n\t\t\tconst button = document.querySelector(`.guess-user-btn[data-user-id=\"${userId}\"]`);\n\t\t\tif (button) {\n\t\t\t\twindow.applyGuessHighlight(button);\n\t\t\t}\n\t\t};\n\n\t\t// Function to reset the guesses UI for a new video\n\t\tfunction resetGuessesUI(videoId, videoIndex) {\n\t\t\t// Reset all guess buttons\n\t\t\tdocument.querySelectorAll('.guess-user-btn').forEach(btn => {\n\t\t\t\tbtn.classList.remove(...GUESS_HIGHLIGHT_CLASSES);\n\t\t\t\t\n\t\t\t\t// Update the hx-get attribute for the buttons\n\t\t\t\tconst userId = btn.getAttribute('data-user-id') || btn.id.replace('guess-user-', '');\n\t\t\t\tbtn.setAttribute('hx-get', `/game/submit-guess?videoId=${videoId}&guessedUserId=${userId}`);\n\t\t\t});\n\t\t\twindow.applyGuessHighlight(null);\n\t\t\t\n\t\t\t// Reset host reveal panel if present\n\t\t\tif (document.getElementById('host-reveal-panel')) {\n\t\t\t\t// Update submitter info\n\t\t\t\tconst submitterDisplay = document.getElementById('actual-submitter-display');\n\t\t\t\tsubmitterDisplay.setAttribute('hx-get', `/game/get-submitter?videoId=${videoId}`);\n\t\t\t\thtmx.process(submitterDisplay);\n\t\t\t\t\n\t\t\t\t// Reset reveal button\n\t\t\t\tconst revealBtn = document.getElementById('reveal-guesses-btn');\n\t\t\t\trevealBtn.setAttribute('hx-get', `/game/get-guesses?videoId=${videoId}`);\n\t\t\t\trevealBtn.disabled = false;\n\t\t\t\trevealBtn.classList.remove('opacity-50', 'cursor-not-allowed');\n\t\t\t\trevealBtn.textContent = 'Reveal All Guesses';\n\t\t\t\t\n\t\t\t\t// Hide guesses area\n\t\t\t\tconst revealArea = document.getElementById('guesses-reveal-area');\n\t\t\t\trevealArea.classList.add('hidden');\n\t\t\t\trevealArea.classList.remove('block');\n\t\t\t\trevealArea.innerHTML = '';\n\t\t\t}\n\t\t\t\n\t\t\t// Reset current guess display and trigger a fetch for the new video\n\t\t\tconst display = document.getElementById('current-guess-display');\n\t\t\tdisplay.innerHTML = '<p>Loading your guess...</p>';\n\t\t\tdisplay.setAttribute('hx-get', `/game/get-current-guess?videoId=${videoId}`);\n\t\t\thtmx.process(display);\n\t\t}\n\n\t\t// Update guessing interface when video changes\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t// Watch for video changes via mutations to the player\n\t\t\tconst observer = new MutationObserver(mutations => {\n\t\t\t\t// Reset the guessing UI when video source changes\n\t\t\t\tconst currentVideoIdContainer = document.getElementById('current-video-id-container');\n\t\t\t\tconst newVideoId = document.querySelector('#yt-player').src.split('/').pop();\n\t\t\t\tconst indexDisplay = document.getElementById('current-video-index');\n\t\t\t\t\n\t\t\t\tif (currentVideoIdContainer.getAttribute('data-video-id') !== newVideoId) {\n\t\t\t\t\t// Update the video ID in our container\n\t\t\t\t\tcurrentVideoIdContainer.setAttribute('data-video-id', newVideoId);\n\t\t\t\t\t\n\t\t\t\t\t// Update video index\n\t\t\t\t\tconst videoIndex = parseInt(indexDisplay.textContent) - 1; // Convert 1-based to 0-based\n\t\t\t\t\tdocument.getElementById('current-video-index-container').setAttribute('data-current-index', videoIndex.toString());\n\t\t\t\t\t\n\t\t\t\t\t// Reset all UI elements for guesses\n\t\t\t\t\tresetGuessesUI(newVideoId, videoIndex);\n\t\t\t\t}\n\t\t\t});\n\t\t\t\n\t\t\t// Observe the player for src changes\n\t\t\tconst player = document.querySelector('#yt-player');\n\t\t\tif (player) {\n\t\t\t\tobserver.observe(player, { attributes: true, attributeFilter: ['src'] });\n\t\t\t}\n\t\t});\n\n\t\tdocument.body.addEventListener('htmx:afterSwap', function(event) {\n\t\t\tif (event.target && event.target.id === 'current-guess-display') {\n\t\t\t\tconst container = event.target.querySelector('[data-guess-user-id]');\n\t\t\t\tif (container) {\n\t\t\t\t\twindow.highlightGuessByUserId(container.getAttribute('data-guess-user-id'));\n\t\t\t\t} else {\n\t\t\t\t\twindow.applyGuessHighlight(null);\n\t\t\t\t}\n\t\t\t} else if (event.target && event.target.id === 'guesses-reveal-area') {\n\t\t\t\tevent.target.classList.remove('hidden');\n\t\t\t\tevent.target.classList.add('block');\n\t\t\t\tconst revealBtn = document.getElementById('reveal-guesses-btn');\n\t\t\t\tif (revealBtn) {\n\t\t\t\t\trevealBtn.disabled = true;\n\t\t\t\t\trevealBtn.classList.add('opacity-50', 'cursor-not-allowed');\n\t\t\t\t\trevealBtn.textContent = 'Guesses Revealed';\n\t\t\t\t}\n\t\t\t}\n\t\t});\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -480,9 +644,9 @@ func Game(gameState *states.GameState, sessionData *stores.SessionData) templ.Co
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var21 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var21 == nil {
-			templ_7745c5c3_Var21 = templ.NopComponent
+		templ_7745c5c3_Var30 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var30 == nil {
+			templ_7745c5c3_Var30 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = MainContent(gameContents(gameState, sessionData)).Render(ctx, templ_7745c5c3_Buffer)

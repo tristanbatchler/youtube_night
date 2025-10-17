@@ -83,6 +83,44 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const createVideoGuess = `-- name: CreateVideoGuess :one
+INSERT INTO video_guesses (
+    user_id, gang_id, video_id, guessed_user_id
+) VALUES (
+    $1, $2, $3, $4
+)
+ON CONFLICT (user_id, gang_id, video_id) 
+DO UPDATE SET guessed_user_id = $4, guessed_at = CURRENT_TIMESTAMP
+RETURNING id, user_id, gang_id, video_id, guessed_user_id, guessed_at
+`
+
+type CreateVideoGuessParams struct {
+	UserID        int32
+	GangID        int32
+	VideoID       string
+	GuessedUserID int32
+}
+
+// Video guess related queries
+func (q *Queries) CreateVideoGuess(ctx context.Context, arg CreateVideoGuessParams) (VideoGuess, error) {
+	row := q.db.QueryRow(ctx, createVideoGuess,
+		arg.UserID,
+		arg.GangID,
+		arg.VideoID,
+		arg.GuessedUserID,
+	)
+	var i VideoGuess
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.GangID,
+		&i.VideoID,
+		&i.GuessedUserID,
+		&i.GuessedAt,
+	)
+	return i, err
+}
+
 const createVideoIfNotExists = `-- name: CreateVideoIfNotExists :exec
 INSERT INTO videos (
     video_id, title, description, thumbnail_url, channel_name
@@ -139,6 +177,16 @@ func (q *Queries) CreateVideoSubmission(ctx context.Context, arg CreateVideoSubm
 	return i, err
 }
 
+const deleteGuessesForGang = `-- name: DeleteGuessesForGang :exec
+DELETE FROM video_guesses
+WHERE gang_id = $1
+`
+
+func (q *Queries) DeleteGuessesForGang(ctx context.Context, gangID int32) error {
+	_, err := q.db.Exec(ctx, deleteGuessesForGang, gangID)
+	return err
+}
+
 const deleteVideoSubmission = `-- name: DeleteVideoSubmission :exec
 DELETE FROM video_submissions
 WHERE user_id = $1
@@ -155,6 +203,154 @@ type DeleteVideoSubmissionParams struct {
 func (q *Queries) DeleteVideoSubmission(ctx context.Context, arg DeleteVideoSubmissionParams) error {
 	_, err := q.db.Exec(ctx, deleteVideoSubmission, arg.UserID, arg.GangID, arg.VideoID)
 	return err
+}
+
+const getAllGuessesForGang = `-- name: GetAllGuessesForGang :many
+SELECT vg.id, vg.user_id, vg.gang_id, vg.video_id, vg.guessed_user_id, vg.guessed_at, 
+       u1.name AS guesser_name, u1.avatar_path AS guesser_avatar,
+       u2.name AS guessed_name, u2.avatar_path AS guessed_avatar
+FROM video_guesses vg
+JOIN users u1 ON vg.user_id = u1.id
+JOIN users u2 ON vg.guessed_user_id = u2.id
+WHERE vg.gang_id = $1
+ORDER BY vg.video_id, vg.guessed_at
+`
+
+type GetAllGuessesForGangRow struct {
+	ID            int32
+	UserID        int32
+	GangID        int32
+	VideoID       string
+	GuessedUserID int32
+	GuessedAt     pgtype.Timestamptz
+	GuesserName   string
+	GuesserAvatar pgtype.Text
+	GuessedName   string
+	GuessedAvatar pgtype.Text
+}
+
+func (q *Queries) GetAllGuessesForGang(ctx context.Context, gangID int32) ([]GetAllGuessesForGangRow, error) {
+	rows, err := q.db.Query(ctx, getAllGuessesForGang, gangID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllGuessesForGangRow
+	for rows.Next() {
+		var i GetAllGuessesForGangRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.GangID,
+			&i.VideoID,
+			&i.GuessedUserID,
+			&i.GuessedAt,
+			&i.GuesserName,
+			&i.GuesserAvatar,
+			&i.GuessedName,
+			&i.GuessedAvatar,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllGuessesForVideo = `-- name: GetAllGuessesForVideo :many
+SELECT vg.id, vg.user_id, vg.gang_id, vg.video_id, vg.guessed_user_id, vg.guessed_at, 
+       u1.name AS guesser_name, u1.avatar_path AS guesser_avatar,
+       u2.name AS guessed_name, u2.avatar_path AS guessed_avatar
+FROM video_guesses vg
+JOIN users u1 ON vg.user_id = u1.id
+JOIN users u2 ON vg.guessed_user_id = u2.id
+WHERE vg.gang_id = $1 AND vg.video_id = $2
+ORDER BY vg.guessed_at
+`
+
+type GetAllGuessesForVideoParams struct {
+	GangID  int32
+	VideoID string
+}
+
+type GetAllGuessesForVideoRow struct {
+	ID            int32
+	UserID        int32
+	GangID        int32
+	VideoID       string
+	GuessedUserID int32
+	GuessedAt     pgtype.Timestamptz
+	GuesserName   string
+	GuesserAvatar pgtype.Text
+	GuessedName   string
+	GuessedAvatar pgtype.Text
+}
+
+func (q *Queries) GetAllGuessesForVideo(ctx context.Context, arg GetAllGuessesForVideoParams) ([]GetAllGuessesForVideoRow, error) {
+	rows, err := q.db.Query(ctx, getAllGuessesForVideo, arg.GangID, arg.VideoID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllGuessesForVideoRow
+	for rows.Next() {
+		var i GetAllGuessesForVideoRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.GangID,
+			&i.VideoID,
+			&i.GuessedUserID,
+			&i.GuessedAt,
+			&i.GuesserName,
+			&i.GuesserAvatar,
+			&i.GuessedName,
+			&i.GuessedAvatar,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllUsersInGang = `-- name: GetAllUsersInGang :many
+SELECT u.id, u.name, u.avatar_path, u.created_at, u.last_login FROM users u
+JOIN users_gangs ug ON u.id = ug.user_id
+WHERE ug.gang_id = $1
+ORDER BY u.name
+`
+
+func (q *Queries) GetAllUsersInGang(ctx context.Context, gangID int32) ([]User, error) {
+	rows, err := q.db.Query(ctx, getAllUsersInGang, gangID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.AvatarPath,
+			&i.CreatedAt,
+			&i.LastLogin,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getAllVideosInGang = `-- name: GetAllVideosInGang :many
@@ -390,6 +586,57 @@ func (q *Queries) GetVideoByVideoId(ctx context.Context, videoID string) (Video,
 		&i.ThumbnailUrl,
 		&i.ChannelName,
 	)
+	return i, err
+}
+
+const getVideoGuessForUser = `-- name: GetVideoGuessForUser :one
+SELECT id, user_id, gang_id, video_id, guessed_user_id, guessed_at FROM video_guesses
+WHERE user_id = $1 AND gang_id = $2 AND video_id = $3
+`
+
+type GetVideoGuessForUserParams struct {
+	UserID  int32
+	GangID  int32
+	VideoID string
+}
+
+func (q *Queries) GetVideoGuessForUser(ctx context.Context, arg GetVideoGuessForUserParams) (VideoGuess, error) {
+	row := q.db.QueryRow(ctx, getVideoGuessForUser, arg.UserID, arg.GangID, arg.VideoID)
+	var i VideoGuess
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.GangID,
+		&i.VideoID,
+		&i.GuessedUserID,
+		&i.GuessedAt,
+	)
+	return i, err
+}
+
+const getVideoSubmitter = `-- name: GetVideoSubmitter :one
+SELECT u.id, u.name, u.avatar_path
+FROM video_submissions vs
+JOIN users u ON vs.user_id = u.id
+WHERE vs.gang_id = $1 AND vs.video_id = $2
+`
+
+type GetVideoSubmitterParams struct {
+	GangID  int32
+	VideoID string
+}
+
+type GetVideoSubmitterRow struct {
+	ID         int32
+	Name       string
+	AvatarPath pgtype.Text
+}
+
+// Query to find the submitter of a video
+func (q *Queries) GetVideoSubmitter(ctx context.Context, arg GetVideoSubmitterParams) (GetVideoSubmitterRow, error) {
+	row := q.db.QueryRow(ctx, getVideoSubmitter, arg.GangID, arg.VideoID)
+	var i GetVideoSubmitterRow
+	err := row.Scan(&i.ID, &i.Name, &i.AvatarPath)
 	return i, err
 }
 

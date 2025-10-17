@@ -37,3 +37,15 @@ CREATE TABLE IF NOT EXISTS video_submissions (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, gang_id, video_id)
 );
+
+-- New table for video guesses
+CREATE TABLE IF NOT EXISTS video_guesses (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    gang_id INTEGER NOT NULL REFERENCES gangs(id) ON DELETE CASCADE,
+    video_id TEXT NOT NULL REFERENCES videos(video_id) ON DELETE CASCADE,
+    guessed_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    guessed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    -- Ensure a user can only make one guess per video in a gang
+    UNIQUE (user_id, gang_id, video_id)
+);

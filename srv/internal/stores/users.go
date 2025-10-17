@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -166,4 +167,21 @@ func (us *UserStore) IsUserHostOfGang(ctx context.Context, userId int32, gangId 
 		return false, fmt.Errorf("error checking if user is host of gang: %w", err)
 	}
 	return isHost, nil
+}
+
+// GetAllUsersInGang returns all users in a specific gang
+func (s *UserStore) GetAllUsersInGang(ctx context.Context, gangId int32) ([]db.User, error) {
+	if gangId <= 0 {
+		return nil, fmt.Errorf("gangId must be a positive integer")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+
+	users, err := s.queries.GetUsersInGang(ctx, gangId)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching users in gang %d: %w", gangId, err)
+	}
+
+	return users, nil
 }

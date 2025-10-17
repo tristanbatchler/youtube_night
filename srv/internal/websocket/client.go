@@ -27,6 +27,9 @@ type CurrentVideo struct {
 	PausedAt        float64   // Timestamp where video was paused
 	LastPause       time.Time // Time when the most recent pause occurred
 	TotalPausedTime float64   // Accumulated time in seconds the video has been paused
+	HostTimestamp   float64   // Host-reported playback position when UpdatedAt was recorded
+	UpdatedAt       time.Time // Last time the host reported playback state
+	LastAction      string    // Last host action (play, pause, seek)
 }
 
 // Hub maintains the set of active clients and broadcasts messages
@@ -77,27 +80,20 @@ func (h *Hub) Run() {
 
 			// Check if there's a video already playing in this gang
 			if currentVideo, exists := h.currentVideos[client.GangID]; exists {
-				// Calculate how long the video has been playing
-				var elapsedTime float64
-				if currentVideo.IsPaused {
-					// If the video is paused, use the timestamp where it was paused
-					elapsedTime = currentVideo.PausedAt
-					h.logger.Printf("Video is paused, using PausedAt timestamp: %.2f", elapsedTime)
-				} else {
-					// Calculate elapsed time correctly accounting for paused periods
-					rawElapsed := time.Since(currentVideo.StartedAt).Seconds()
-					// Subtract the total paused time from the raw elapsed time
-					elapsedTime = rawElapsed - currentVideo.TotalPausedTime
-
-					if elapsedTime < 0 {
-						// Safety check to prevent negative timestamps
-						h.logger.Printf("Warning: Calculated negative timestamp (%.2f), resetting to 0", elapsedTime)
-						elapsedTime = 0
-					}
-
-					h.logger.Printf("Video is playing, calculated timestamp: %.2f (raw: %.2f, paused: %.2f)",
-						elapsedTime, rawElapsed, currentVideo.TotalPausedTime)
+				// Calculate the host-aligned timestamp that late joiners should start from
+				elapsedTime := currentVideo.HostTimestamp
+				if !currentVideo.IsPaused {
+					timeSinceUpdate := time.Since(currentVideo.UpdatedAt).Seconds()
+					elapsedTime += timeSinceUpdate
 				}
+				if elapsedTime < 0 {
+					// Safety check to prevent negative timestamps
+					h.logger.Printf("Warning: Calculated negative timestamp (%.2f), resetting to 0", elapsedTime)
+					elapsedTime = 0
+				}
+				h.logger.Printf("Late joiner sync -> action: %s, paused: %t, base: %.2f, delta: %.2f, start: %.2f",
+					currentVideo.LastAction, currentVideo.IsPaused, currentVideo.HostTimestamp,
+					time.Since(currentVideo.UpdatedAt).Seconds(), elapsedTime)
 
 				// Use a goroutine to avoid blocking the hub's main loop
 				go func(c *Client, cv *CurrentVideo, timestamp float64) {
@@ -194,11 +190,17 @@ func (h *Hub) SetCurrentVideo(gangID int32, video *CurrentVideo) {
 
 	// Ensure LastPause is initialized
 	if video.LastPause.IsZero() {
-		video.LastPause = video.StartedAt
+		video.LastPause = time.Time{}
 	}
 
-	// Initialize TotalPausedTime to 0 for a new video
+	now := time.Now()
+	video.StartedAt = now
 	video.TotalPausedTime = 0
+	video.IsPaused = false
+	video.PausedAt = 0
+	video.HostTimestamp = 0
+	video.UpdatedAt = now
+	video.LastAction = "play"
 
 	h.currentVideos[gangID] = video
 	h.mu.Unlock()
@@ -208,7 +210,7 @@ func (h *Hub) SetCurrentVideo(gangID int32, video *CurrentVideo) {
 }
 
 // UpdatePlaybackState updates the playback state (paused/playing) for a gang
-func (h *Hub) UpdatePlaybackState(gangID int32, isPaused bool, timestamp float64) {
+func (h *Hub) UpdatePlaybackState(gangID int32, action string, timestamp float64, isPaused bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -222,23 +224,32 @@ func (h *Hub) UpdatePlaybackState(gangID int32, isPaused bool, timestamp float64
 		return
 	}
 
-	// Handle state change
-	if isPaused && !video.IsPaused {
-		// Transitioning from playing to paused
-		video.IsPaused = true
-		video.PausedAt = timestamp
-		video.LastPause = time.Now()
-		h.logger.Printf("Video paused for gang %d at timestamp %.2f", gangID, timestamp)
-	} else if !isPaused && video.IsPaused {
-		// Transitioning from paused to playing
-		video.IsPaused = false
+	now := time.Now()
+	wasPaused := video.IsPaused
 
-		// Calculate how long this pause lasted
-		pauseDuration := time.Since(video.LastPause).Seconds()
-		// Add it to the total paused time counter
-		video.TotalPausedTime += pauseDuration
-
-		h.logger.Printf("Video resumed for gang %d from timestamp %.2f (pause duration: %.2f, total paused: %.2f)",
-			gangID, timestamp, pauseDuration, video.TotalPausedTime)
+	if !wasPaused && isPaused {
+		video.LastPause = now
 	}
+
+	if wasPaused && !isPaused && !video.LastPause.IsZero() {
+		pauseDuration := now.Sub(video.LastPause).Seconds()
+		if pauseDuration < 0 {
+			pauseDuration = 0
+		}
+		video.TotalPausedTime += pauseDuration
+		video.LastPause = time.Time{}
+	}
+
+	video.IsPaused = isPaused
+	if isPaused {
+		video.PausedAt = timestamp
+	} else {
+		video.PausedAt = 0
+	}
+
+	video.HostTimestamp = timestamp
+	video.UpdatedAt = now
+	video.LastAction = action
+
+	h.logger.Printf("Playback update for gang %d -> action: %s, paused: %t, timestamp: %.2f", gangID, action, isPaused, timestamp)
 }

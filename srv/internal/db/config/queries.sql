@@ -115,3 +115,55 @@ SELECT isHost FROM users_gangs
 WHERE user_id = $1
 AND gang_id = $2;
 
+-- Video guess related queries
+-- name: CreateVideoGuess :one
+INSERT INTO video_guesses (
+    user_id, gang_id, video_id, guessed_user_id
+) VALUES (
+    $1, $2, $3, $4
+)
+ON CONFLICT (user_id, gang_id, video_id) 
+DO UPDATE SET guessed_user_id = $4, guessed_at = CURRENT_TIMESTAMP
+RETURNING *;
+
+-- name: GetVideoGuessForUser :one
+SELECT * FROM video_guesses
+WHERE user_id = $1 AND gang_id = $2 AND video_id = $3;
+
+-- name: GetAllGuessesForVideo :many
+SELECT vg.*, 
+       u1.name AS guesser_name, u1.avatar_path AS guesser_avatar,
+       u2.name AS guessed_name, u2.avatar_path AS guessed_avatar
+FROM video_guesses vg
+JOIN users u1 ON vg.user_id = u1.id
+JOIN users u2 ON vg.guessed_user_id = u2.id
+WHERE vg.gang_id = $1 AND vg.video_id = $2
+ORDER BY vg.guessed_at;
+
+-- name: GetAllGuessesForGang :many
+SELECT vg.*, 
+       u1.name AS guesser_name, u1.avatar_path AS guesser_avatar,
+       u2.name AS guessed_name, u2.avatar_path AS guessed_avatar
+FROM video_guesses vg
+JOIN users u1 ON vg.user_id = u1.id
+JOIN users u2 ON vg.guessed_user_id = u2.id
+WHERE vg.gang_id = $1
+ORDER BY vg.video_id, vg.guessed_at;
+
+-- Query to find the submitter of a video
+-- name: GetVideoSubmitter :one
+SELECT u.id, u.name, u.avatar_path
+FROM video_submissions vs
+JOIN users u ON vs.user_id = u.id
+WHERE vs.gang_id = $1 AND vs.video_id = $2;
+
+-- name: DeleteGuessesForGang :exec
+DELETE FROM video_guesses
+WHERE gang_id = $1;
+
+-- name: GetAllUsersInGang :many
+SELECT u.* FROM users u
+JOIN users_gangs ug ON u.id = ug.user_id
+WHERE ug.gang_id = $1
+ORDER BY u.name;
+

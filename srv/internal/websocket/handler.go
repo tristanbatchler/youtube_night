@@ -159,14 +159,16 @@ func SendCurrentVideo(hub *Hub, client *Client, videoID string, index int, title
 	hub.mu.RLock()
 	video := hub.currentVideos[client.GangID]
 	isPaused := false
+	lastAction := ""
 	if video != nil {
 		isPaused = video.IsPaused
+		lastAction = video.LastAction
 	}
 	hub.mu.RUnlock()
 
 	// Create a JSON message with the video details, current timestamp, and pause state
-	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s","timestamp":%f,"isPaused":%t}`,
-		CurrentVideoMessage, videoID, index, title, channel, timestamp, isPaused)
+	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s","timestamp":%f,"isPaused":%t,"action":"%s"}`,
+		CurrentVideoMessage, videoID, index, title, channel, timestamp, isPaused, lastAction)
 
 	// Send only to the specific client
 	select {
@@ -180,12 +182,12 @@ func SendCurrentVideo(hub *Hub, client *Client, videoID string, index int, title
 }
 
 // SendPlaybackState broadcasts playback state changes (pause/play) to all clients in a gang
-func SendPlaybackState(hub *Hub, gangID int32, isPaused bool, timestamp float64) {
-	message := fmt.Sprintf(`{"type":"%s","isPaused":%t,"timestamp":%f}`,
-		PlaybackStateMessage, isPaused, timestamp)
+func SendPlaybackState(hub *Hub, gangID int32, action string, isPaused bool, timestamp float64) {
+	message := fmt.Sprintf(`{"type":"%s","action":"%s","isPaused":%t,"timestamp":%f}`,
+		PlaybackStateMessage, action, isPaused, timestamp)
 	hub.BroadcastToGang(gangID, []byte(message))
-	hub.logger.Printf("Broadcast playback state change: isPaused=%t, timestamp=%.2f to gang %d",
-		isPaused, timestamp, gangID)
+	hub.logger.Printf("Broadcast playback state change: action=%s, isPaused=%t, timestamp=%.2f to gang %d",
+		action, isPaused, timestamp, gangID)
 }
 
 // SendVideoChange notifies all clients in a gang about a video change
@@ -200,7 +202,7 @@ func SendVideoChange(hub *Hub, gangID int32, videoID string, index int, title st
 	})
 
 	// Create a JSON message with the video details
-	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s"}`,
+	message := fmt.Sprintf(`{"type":"%s","videoId":"%s","index":%d,"title":"%s","channel":"%s","timestamp":0,"isPaused":false,"action":"play"}`,
 		VideoChangeMessage, videoID, index, title, channel)
 	hub.BroadcastToGang(gangID, []byte(message))
 }

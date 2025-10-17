@@ -146,3 +146,41 @@ func (s *VideoSubmissionStore) GetAllVideosInGang(ctx context.Context, gangId in
 
 	return videos, nil
 }
+
+// GetVideoSubmitters returns a map of videoID to submitterID for all videos in a gang
+func (s *VideoSubmissionStore) GetVideoSubmitters(ctx context.Context, gangId int32) (map[string]int32, error) {
+	if gangId <= 0 {
+		return nil, fmt.Errorf("gangId must be a positive integer")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	// Create a query to join the video_submission table with the videos table
+	rows, err := s.dbPool.Query(ctx, `
+		SELECT video_id, user_id 
+		FROM video_submissions 
+		WHERE gang_id = $1
+	`, gangId)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching video submitters for gang %d: %w", gangId, err)
+	}
+	defer rows.Close()
+
+	// Map of videoID to submitterID
+	submitters := make(map[string]int32)
+	for rows.Next() {
+		var videoID string
+		var userID int32
+		if err := rows.Scan(&videoID, &userID); err != nil {
+			return nil, fmt.Errorf("error scanning video submitter: %w", err)
+		}
+		submitters[videoID] = userID
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating through video submitters: %w", err)
+	}
+
+	return submitters, nil
+}

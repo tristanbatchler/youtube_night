@@ -38,6 +38,15 @@ type Video struct {
 	ChannelName  string
 }
 
+type VideoGuess struct {
+	ID            int32
+	UserID        int32
+	GangID        int32
+	VideoID       string
+	GuessedUserID int32
+	GuessedAt     pgtype.Timestamptz
+}
+
 type VideoSubmission struct {
 	ID        int32
 	UserID    int32

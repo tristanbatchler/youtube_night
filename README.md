@@ -114,6 +114,9 @@ server {
 }
 ```
 
+# Docs
+See the [docs](./docs/index.md) for more information on how this application is built using Templ, HTMX, and Hyperscript.
+
 ## ToDo
  - [x] Add favicons
  - [x] Abstract emoji/avatar handling/showing

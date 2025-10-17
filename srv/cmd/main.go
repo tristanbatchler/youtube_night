@@ -125,10 +125,17 @@ func main() {
 		logger.Fatalf("Error creating video submission store: %v", err)
 	}
 
+	// Create the new guess store
+	guessStore, err := stores.NewGuessStore(dbPool, logger)
+	if err != nil {
+		logger.Fatalf("Error creating guess store: %v", err)
+	}
+
 	wsHub := websocket.NewHub(logger)
 	go wsHub.Run()
 
-	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore, videoSubmissionStore, youtubeService, wsHub)
+	webServer, err := internal.NewWebServer(cfg.WebPort, logger, sessionStore, userStore, gangStore,
+		videoSubmissionStore, guessStore, youtubeService, wsHub)
 	if err != nil {
 		logger.Fatalf("Error creating web server: %v", err)
 	}

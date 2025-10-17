@@ -2,15 +2,17 @@ package internal
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json" // Add missing import
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"math/rand/v2"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -38,12 +40,16 @@ type server struct {
 	userStore            *stores.UserStore
 	gangStore            *stores.GangStore
 	videoSubmissionStore *stores.VideoSubmissionStore
+	guessStore           *stores.GuessStore // New GuessStore
 	youtubeService       *youtube.Service
 	wsHub                *websocket.Hub
 	gameStateManager     *states.GameStateManager
 }
 
-func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore, gangStore *stores.GangStore, videoSubmissionStore *stores.VideoSubmissionStore, youtubeService *youtube.Service, wsHub *websocket.Hub) (*server, error) {
+func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStore, userStore *stores.UserStore,
+	gangStore *stores.GangStore, videoSubmissionStore *stores.VideoSubmissionStore,
+	guessStore *stores.GuessStore, youtubeService *youtube.Service,
+	wsHub *websocket.Hub) (*server, error) {
 	if logger == nil {
 		return nil, fmt.Errorf("logger cannot be nil")
 	}
@@ -73,6 +79,7 @@ func NewWebServer(port int, logger *log.Logger, sessionStore *stores.SessionStor
 		userStore:            userStore,
 		gangStore:            gangStore,
 		videoSubmissionStore: videoSubmissionStore,
+		guessStore:           guessStore,
 		youtubeService:       youtubeService,
 		wsHub:                wsHub,
 		gameStateManager:     states.NewGameStateManager(logger),
@@ -122,7 +129,12 @@ func (s *server) Start() error {
 	router.Handle("POST /videos/submit", protectedMiddleware(http.HandlerFunc(s.submitVideoHandler)))
 	router.Handle("POST /videos/remove", protectedMiddleware(http.HandlerFunc(s.removeVideoHandler)))
 	router.Handle("GET /game/change-video", protectedMiddleware(http.HandlerFunc(s.changeVideoHandler)))
-	router.Handle("GET /game/playback-state", protectedMiddleware(http.HandlerFunc(s.playbackStateHandler))) // New endpoint for playback control
+	router.Handle("GET /game/playback-state", protectedMiddleware(http.HandlerFunc(s.playbackStateHandler)))  // New endpoint for playback control
+	router.Handle("POST /game/playback-state", protectedMiddleware(http.HandlerFunc(s.playbackStateHandler))) // Allow POST for playback updates
+	router.Handle("GET /game/submit-guess", protectedMiddleware(http.HandlerFunc(s.submitGuessHandler)))
+	router.Handle("GET /game/get-guesses", protectedMiddleware(http.HandlerFunc(s.getGuessesHandler)))
+	router.Handle("GET /game/get-current-guess", protectedMiddleware(http.HandlerFunc(s.getCurrentGuessHandler)))
+	router.Handle("GET /game/get-submitter", protectedMiddleware(http.HandlerFunc(s.getSubmitterHandler)))
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.port),
@@ -712,6 +724,362 @@ func (s *server) websocketHandler(w http.ResponseWriter, r *http.Request) {
 	websocket.ServeWs(s.wsHub, w, r, sessionData.UserId, sessionData.GangId, isHost)
 }
 
+// submitGuessHandler handles requests to record a user's guess for a video
+func (s *server) submitGuessHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data to verify the user
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get the video ID and guessed user ID from query params
+	videoID := r.URL.Query().Get("videoId")
+	guessedUserIDStr := r.URL.Query().Get("guessedUserId")
+
+	if videoID == "" || guessedUserIDStr == "" {
+		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+		return
+	}
+
+	// Parse the guessed user ID
+	guessedUserID, err := strconv.ParseInt(guessedUserIDStr, 10, 32)
+	if err != nil {
+		s.logger.Printf("Error parsing guessedUserId: %v", err)
+		http.Error(w, "Invalid guessedUserId", http.StatusBadRequest)
+		return
+	}
+
+	// Record the guess in the database
+	_, err = s.guessStore.RecordGuess(r.Context(), sessionData.UserId, sessionData.GangId, videoID, int32(guessedUserID))
+	if err != nil {
+		s.logger.Printf("Error recording guess: %v", err)
+		http.Error(w, "Failed to record guess", http.StatusInternalServerError)
+		return
+	}
+
+	// Get the guessed user's details
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+
+	guessedUser, err := s.userStore.GetUserById(ctx, int32(guessedUserID))
+	if err != nil {
+		s.logger.Printf("Error getting guessed user: %v", err)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// Return HTML component showing the guess
+	templates.CurrentGuessDisplay(guessedUser).Render(r.Context(), w)
+}
+
+// getGuessesHandler returns all guesses for a specific video
+func (s *server) getGuessesHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data to verify the user is the host
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Only hosts can see all guesses
+	if !sessionData.IsHost {
+		http.Error(w, "Only hosts can see all guesses", http.StatusForbidden)
+		return
+	}
+
+	// Get the video ID from query params
+	videoID := r.URL.Query().Get("videoId")
+	if videoID == "" {
+		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+		return
+	}
+
+	// Get all guesses for this video from the database
+	guesses, err := s.guessStore.GetAllGuessesForVideo(r.Context(), sessionData.GangId, videoID)
+	if err != nil {
+		s.logger.Printf("Failed to get guesses for video %s in gang %d: %v", videoID, sessionData.GangId, err)
+		http.Error(w, "Failed to get guesses", http.StatusInternalServerError)
+		return
+	}
+
+	// Return HTML component showing all guesses
+	templates.AllGuessesDisplay(guesses).Render(r.Context(), w)
+}
+
+// getCurrentGuessHandler returns the current user's guess for a specific video
+func (s *server) getCurrentGuessHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data to verify the user
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get the video ID from query params
+	videoID := r.URL.Query().Get("videoId")
+	if videoID == "" {
+		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+		return
+	}
+
+	// Try to get the user's guess for this video
+	guess, err := s.guessStore.GetUserGuessForVideo(r.Context(), sessionData.UserId, sessionData.GangId, videoID)
+	if err != nil {
+		// No guess found or error
+		templates.NoCurrentGuessDisplay().Render(r.Context(), w)
+		return
+	}
+
+	// Get the guessed user's details
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+
+	guessedUser, err := s.userStore.GetUserById(ctx, guess.GuessedUserID)
+	if err != nil {
+		s.logger.Printf("Error getting guessed user: %v", err)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// Return HTML showing the user's current guess
+	templates.CurrentGuessDisplay(guessedUser).Render(r.Context(), w)
+}
+
+// getSubmitterHandler returns the user who submitted a specific video
+func (s *server) getSubmitterHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data to verify permissions
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Only hosts can see submitter information
+	if !sessionData.IsHost {
+		http.Error(w, "Only hosts can see submitter information", http.StatusForbidden)
+		return
+	}
+
+	// Get video ID from query params
+	videoID := r.URL.Query().Get("videoId")
+	if videoID == "" {
+		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+		return
+	}
+
+	// Get the submitter for this video
+	submitter, err := s.guessStore.GetVideoSubmitter(r.Context(), sessionData.GangId, videoID)
+	if err != nil {
+		s.logger.Printf("Error getting video submitter: %v", err)
+		// Return empty component but don't fail
+		templates.NoSubmitterDisplay().Render(r.Context(), w)
+		return
+	}
+
+	// Return HTML showing the submitter
+	templates.SubmitterDisplay(submitter).Render(r.Context(), w)
+}
+
+// changeVideoHandler processes a request to change the currently playing video
+func (s *server) changeVideoHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data to verify permissions
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	isHost, err := s.userStore.IsUserHostOfGang(ctx, sessionData.UserId, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error verifying host privileges: %v", err)
+		http.Error(w, "Error verifying permissions", http.StatusInternalServerError)
+		return
+	}
+
+	if !isHost {
+		http.Error(w, "Only hosts can change videos", http.StatusForbidden)
+		return
+	}
+
+	// keep session data in sync with DB state for downstream handlers
+	sessionData.IsHost = true
+
+	// Get video details from query params
+	videoID := r.URL.Query().Get("videoId")
+	indexStr := r.URL.Query().Get("index")
+
+	if videoID == "" {
+		http.Error(w, "Video ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse index as integer
+	index := 0
+	if indexStr != "" {
+		var err error
+		index, err = strconv.Atoi(indexStr)
+		if err != nil {
+			s.logger.Printf("Error parsing index: %v", err)
+			http.Error(w, "Invalid index", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Get the game state to access video details
+	gameState, exists := s.gameStateManager.GetGameState(sessionData.GangId)
+	if !exists {
+		http.Error(w, "No active game", http.StatusBadRequest)
+		return
+	}
+
+	// Find the video in the game state
+	var title, channel string
+	if index >= 0 && index < len(gameState.Videos) {
+		title = gameState.Videos[index].Title
+		channel = gameState.Videos[index].ChannelName
+	} else {
+		s.logger.Printf("Video index out of range: %d", index)
+		http.Error(w, "Video index out of range", http.StatusBadRequest)
+		return
+	}
+
+	// Broadcast the video change to all clients in the gang
+	websocket.SendVideoChange(s.wsHub, sessionData.GangId, videoID, index, title, channel)
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"success":true}`)
+}
+
+// playbackStateHandler handles requests to update playback state (pause/play)
+func (s *server) playbackStateHandler(w http.ResponseWriter, r *http.Request) {
+	// Get session data to verify permissions
+	sessionData, ok := middleware.GetSessionData(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	isHost, err := s.userStore.IsUserHostOfGang(ctx, sessionData.UserId, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error verifying host privileges: %v", err)
+		http.Error(w, "Error verifying permissions", http.StatusInternalServerError)
+		return
+	}
+	if !isHost {
+		http.Error(w, "Only hosts can control global playback", http.StatusForbidden)
+		return
+	}
+	sessionData.IsHost = true
+
+	type playbackUpdatePayload struct {
+		Action    *string  `json:"action"`
+		Timestamp *float64 `json:"timestamp"`
+		IsPaused  *bool    `json:"isPaused"`
+	}
+
+	var (
+		action       string
+		timestamp    float64
+		hasTimestamp bool
+		isPaused     bool
+		hasPaused    bool
+		payload      playbackUpdatePayload
+	)
+
+	if r.Method == http.MethodPost {
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			s.logger.Printf("Invalid playback payload: %v", err)
+			http.Error(w, "Invalid payload", http.StatusBadRequest)
+			return
+		}
+		if payload.Action != nil {
+			action = *payload.Action
+		}
+		if payload.Timestamp != nil {
+			timestamp = *payload.Timestamp
+			hasTimestamp = true
+		}
+		if payload.IsPaused != nil {
+			isPaused = *payload.IsPaused
+			hasPaused = true
+		}
+	} else {
+		action = r.URL.Query().Get("action")
+		if tsStr := r.URL.Query().Get("timestamp"); tsStr != "" {
+			var parseErr error
+			timestamp, parseErr = strconv.ParseFloat(tsStr, 64)
+			if parseErr != nil {
+				s.logger.Printf("Error parsing timestamp: %v", parseErr)
+				http.Error(w, "Invalid timestamp", http.StatusBadRequest)
+				return
+			}
+			hasTimestamp = true
+		}
+		if pausedStr := r.URL.Query().Get("isPaused"); pausedStr != "" {
+			hasPaused = true
+			isPaused = strings.EqualFold(pausedStr, "true")
+		}
+	}
+
+	action = strings.ToLower(strings.TrimSpace(action))
+	if action == "" {
+		if hasPaused {
+			if isPaused {
+				action = "pause"
+			} else {
+				action = "play"
+			}
+		} else {
+			action = "play"
+		}
+	}
+
+	switch action {
+	case "play":
+		if !hasPaused {
+			isPaused = false
+		}
+	case "pause":
+		if !hasPaused {
+			isPaused = true
+		}
+	case "seek":
+		if !hasPaused {
+			// Default to whatever state the player is currently in
+			isPaused = false
+		}
+	default:
+		http.Error(w, "Invalid playback action", http.StatusBadRequest)
+		return
+	}
+
+	if !hasTimestamp {
+		http.Error(w, "Timestamp is required", http.StatusBadRequest)
+		return
+	}
+
+	if math.IsNaN(timestamp) || math.IsInf(timestamp, 0) || timestamp < 0 {
+		http.Error(w, "Invalid timestamp value", http.StatusBadRequest)
+		return
+	}
+
+	s.wsHub.UpdatePlaybackState(sessionData.GangId, action, timestamp, isPaused)
+	websocket.SendPlaybackState(s.wsHub, sessionData.GangId, action, isPaused, timestamp)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{"success": true}); err != nil {
+		s.logger.Printf("Error writing playback response: %v", err)
+	}
+}
+
+// startGameHandler handles request to start a game
 func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 	// Verify the user is authorized
 	sessionData, ok := middleware.GetSessionData(r)
@@ -759,7 +1127,40 @@ func (s *server) startGameHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.gameStateManager.StartGame(sessionData.GangId, shuffledVideos)
+	// First, clear any existing guesses for this gang (in case we're restarting a game)
+	err = s.guessStore.DeleteGuessesForGang(r.Context(), sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error clearing existing guesses: %v", err)
+		// Continue anyway, not fatal
+	}
+
+	// Get all users in the gang to include in the game state
+	ctx, cancel = context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	gangMembers, err := s.userStore.GetAllUsersInGang(ctx, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error getting all users in gang: %v", err)
+		// If we can't get all users, at least get the current user as a fallback
+		currentUser, err := s.userStore.GetUserById(ctx, sessionData.UserId)
+		if err != nil {
+			s.logger.Printf("Error getting current user: %v", err)
+			http.Error(w, "Error retrieving user information", http.StatusInternalServerError)
+			return
+		}
+		gangMembers = []db.User{currentUser}
+		s.logger.Printf("Using only current user as fallback")
+	}
+
+	// Get the submitters (who submitted each video)
+	submitters, err := s.videoSubmissionStore.GetVideoSubmitters(ctx, sessionData.GangId)
+	if err != nil {
+		s.logger.Printf("Error getting video submitters: %v", err)
+		http.Error(w, "Error retrieving video submitters", http.StatusInternalServerError)
+		return
+	}
+
+	s.gameStateManager.StartGame(sessionData.GangId, shuffledVideos, gangMembers, submitters)
 
 	// Initialize current video for this gang
 	if len(shuffledVideos) > 0 {
@@ -912,108 +1313,4 @@ Disallow: /gangs/search
 # Point to sitemap
 Sitemap: %s
 `, sitemapURL)
-}
-
-// changeVideoHandler processes a request to change the currently playing video
-func (s *server) changeVideoHandler(w http.ResponseWriter, r *http.Request) {
-	// Get session data to verify permissions
-	sessionData, ok := middleware.GetSessionData(r)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	// Only hosts can change videos
-	if !sessionData.IsHost {
-		http.Error(w, "Only hosts can change videos", http.StatusForbidden)
-		return
-	}
-
-	// Get video details from query params
-	videoID := r.URL.Query().Get("videoId")
-	indexStr := r.URL.Query().Get("index")
-
-	if videoID == "" {
-		http.Error(w, "Video ID is required", http.StatusBadRequest)
-		return
-	}
-
-	// Parse index as integer
-	index := 0
-	if indexStr != "" {
-		var err error
-		index, err = strconv.Atoi(indexStr)
-		if err != nil {
-			s.logger.Printf("Error parsing index: %v", err)
-			http.Error(w, "Invalid index", http.StatusBadRequest)
-			return
-		}
-	}
-
-	// Get the game state to access video details
-	gameState, exists := s.gameStateManager.GetGameState(sessionData.GangId)
-	if !exists {
-		http.Error(w, "No active game", http.StatusBadRequest)
-		return
-	}
-
-	// Find the video in the game state
-	var title, channel string
-	if index >= 0 && index < len(gameState.Videos) {
-		title = gameState.Videos[index].Title
-		channel = gameState.Videos[index].ChannelName
-	} else {
-		s.logger.Printf("Video index out of range: %d", index)
-		http.Error(w, "Video index out of range", http.StatusBadRequest)
-		return
-	}
-
-	// Broadcast the video change to all clients in the gang
-	websocket.SendVideoChange(s.wsHub, sessionData.GangId, videoID, index, title, channel)
-
-	// Return success
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]bool{"success": true})
-}
-
-// playbackStateHandler handles requests to update playback state (pause/play)
-func (s *server) playbackStateHandler(w http.ResponseWriter, r *http.Request) {
-	// Get session data to verify permissions
-	sessionData, ok := middleware.GetSessionData(r)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	// Only hosts can control global playback
-	if !sessionData.IsHost {
-		http.Error(w, "Only hosts can control global playback", http.StatusForbidden)
-		return
-	}
-
-	// Get the pause state and timestamp from query params
-	isPausedStr := r.URL.Query().Get("isPaused")
-	timestampStr := r.URL.Query().Get("timestamp")
-
-	isPaused := isPausedStr == "true"
-
-	timestamp := 0.0
-	if timestampStr != "" {
-		var err error
-		timestamp, err = strconv.ParseFloat(timestampStr, 64)
-		if err != nil {
-			s.logger.Printf("Error parsing timestamp: %v", err)
-			timestamp = 0.0
-		}
-	}
-
-	// Update playback state in the hub
-	s.wsHub.UpdatePlaybackState(sessionData.GangId, isPaused, timestamp)
-
-	// Broadcast the playback state change to all clients in the gang
-	websocket.SendPlaybackState(s.wsHub, sessionData.GangId, isPaused, timestamp)
-
-	// Return success
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
